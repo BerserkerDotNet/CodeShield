@@ -1,0 +1,23 @@
+{
+  "version": 2,
+  "dependencies": {
+    "net10.0": {
+      "codeshield.abstractions": {
+        "type": "Project"
+      },
+      "codeshield.assessment": {
+        "type": "Project",
+        "dependencies": {
+          "CodeShield.Abstractions": "[1.0.0, )",
+          "CodeShield.Correctness": "[1.0.0, )"
+        }
+      },
+      "codeshield.correctness": {
+        "type": "Project",
+        "dependencies": {
+          "CodeShield.Abstractions": "[1.0.0, )"
+        }
+      }
+    }
+  }
+}

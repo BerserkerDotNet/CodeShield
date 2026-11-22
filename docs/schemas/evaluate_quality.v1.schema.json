@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeshield.local/schemas/v1/evaluate_quality.v1.schema.json",
+  "title": "evaluate_quality (contract version 1)",
+  "$defs": {
+    "input": {
+      "type": "object",
+      "required": ["contractVersion", "workspace", "baseline"],
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": { "const": "1" },
+        "workspace": { "type": "string", "description": "Absolute path of a directory inside the Git repository." },
+        "baseline": { "type": "string", "description": "Git revision; reuse the resolved baselineCommit of a previous response to keep comparisons stable." },
+        "ruleset": { "type": "string", "description": "\"default\" or an exact \"default@1.0.0\"; omitted selects default." }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["contractVersion", "status", "evaluationId", "baselineCommit", "snapshotId", "ruleset", "rulesetVersion", "analyzerVersions", "score", "threshold", "passed", "categories", "findings", "coverage", "reasons", "scope"],
+      "allOf": [
+        {
+          "if": { "properties": { "status": { "const": "complete" } } },
+          "then": { "properties": { "score": { "type": "integer" }, "passed": { "type": "boolean" }, "evaluationId": { "type": "string" }, "baselineCommit": { "type": "string" }, "snapshotId": { "type": "string" } } },
+          "else": { "properties": { "score": { "type": "null" }, "passed": { "type": "null" } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "complete" }, "score": { "type": "integer", "minimum": 90 } } },
+          "then": { "properties": { "passed": { "const": true } } }
+        },
+        {
+          "if": { "properties": { "status": { "const": "complete" }, "score": { "type": "integer", "maximum": 89 } } },
+          "then": { "properties": { "passed": { "const": false } } }
+        },
+        {
+          "if": { "properties": { "status": { "enum": ["incomplete", "error"] } } },
+          "then": { "properties": { "reasons": { "minItems": 1 } } }
+        }
+      ],
+      "properties": {
+        "contractVersion": { "const": "1" },
+        "status": { "enum": ["complete", "incomplete", "no_changes", "error"] },
+        "evaluationId": { "type": ["string", "null"] },
+        "baselineCommit": { "type": ["string", "null"] },
+        "snapshotId": { "type": ["string", "null"] },
+        "ruleset": { "type": ["string", "null"] },
+        "rulesetVersion": { "type": ["string", "null"] },
+        "analyzerVersions": { "type": "object", "additionalProperties": { "type": "string" } },
+        "score": { "type": ["integer", "null"], "minimum": 0, "maximum": 100, "description": "Null unless status is complete." },
+        "threshold": { "const": 90 },
+        "passed": { "type": ["boolean", "null"], "description": "Null unless status is complete; true when score >= 90." },
+        "categories": { "type": "array", "items": { "type": "object", "required": ["name", "deduction"], "properties": { "name": { "type": "string" }, "deduction": { "type": "integer" } } } },
+        "findings": { "type": "array", "items": { "$ref": "common.v1.schema.json#/$defs/finding" } },
+        "coverage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["ruleId", "contextId", "status", "reasons"],
+            "properties": {
+              "ruleId": { "type": "string" },
+              "contextId": { "type": "string" },
+              "status": { "enum": ["complete", "failed", "not_applicable"] },
+              "reasons": { "type": "array", "items": { "$ref": "common.v1.schema.json#/$defs/reason" } }
+            }
+          }
+        },
+        "reasons": { "type": "array", "items": { "$ref": "common.v1.schema.json#/$defs/reason" } },
+        "scope": { "type": "array", "items": { "type": "object", "required": ["path", "status"], "properties": { "path": { "type": "string" }, "status": { "enum": ["added", "modified", "deleted", "renamed", "copied"] } } } }
+      }
+    }
+  },
+  "oneOf": [{ "$ref": "#/$defs/input" }, { "$ref": "#/$defs/output" }]
+}

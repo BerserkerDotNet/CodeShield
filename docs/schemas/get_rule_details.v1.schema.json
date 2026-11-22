@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeshield.local/schemas/v1/get_rule_details.v1.schema.json",
+  "title": "get_rule_details (contract version 1)",
+  "$defs": {
+    "has_method": { "contains": { "properties": { "kind": { "const": "method" } }, "required": ["kind"] } },
+    "has_decisionCount": { "contains": { "properties": { "kind": { "const": "decisionCount" } }, "required": ["kind"] } },
+    "has_maxDepth": { "contains": { "properties": { "kind": { "const": "maxDepth" } }, "required": ["kind"] } },
+    "has_codeLines": { "contains": { "properties": { "kind": { "const": "codeLines" } }, "required": ["kind"] } },
+    "has_parameters": { "contains": { "properties": { "kind": { "const": "parameters" } }, "required": ["kind"] } },
+    "has_components": { "contains": { "properties": { "kind": { "const": "components" } }, "required": ["kind"] } },
+    "has_nodes": { "contains": { "properties": { "kind": { "const": "nodes" } }, "required": ["kind"] } },
+    "has_edges": { "contains": { "properties": { "kind": { "const": "edges" } }, "required": ["kind"] } },
+    "has_attribution": { "contains": { "properties": { "kind": { "const": "attribution" } }, "required": ["kind"] } },
+    "has_cycle": { "contains": { "properties": { "kind": { "const": "cycle" } }, "required": ["kind"] } },
+    "has_newEdges": { "contains": { "properties": { "kind": { "const": "newEdges" } }, "required": ["kind"] } },
+    "has_forbiddenDependency": { "contains": { "properties": { "kind": { "const": "forbiddenDependency" } }, "required": ["kind"] } },
+    "has_mainSequence": { "contains": { "properties": { "kind": { "const": "mainSequence" } }, "required": ["kind"] } },
+    "has_fileLength": { "contains": { "properties": { "kind": { "const": "fileLength" } }, "required": ["kind"] } },
+    "has_duplicateGroup": { "contains": { "properties": { "kind": { "const": "duplicateGroup" } }, "required": ["kind"] } },
+    "has_diagnostic": { "contains": { "properties": { "kind": { "const": "diagnostic" } }, "required": ["kind"] } },
+    "input": {
+      "type": "object",
+      "required": ["contractVersion", "evaluationId", "ruleId"],
+      "additionalProperties": false,
+      "properties": {
+        "contractVersion": { "const": "1" },
+        "evaluationId": { "type": "string" },
+        "ruleId": { "type": "string" }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["contractVersion", "status", "evaluationId", "ruleId", "rulesetVersion", "definition", "intent", "limit", "deductionPerFinding", "findings", "reasons"],
+      "allOf": [
+        { "if": { "properties": { "ruleId": { "const": "complexity.cyclomatic" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_method" }, { "$ref": "#/$defs/has_decisionCount" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "complexity.nesting" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_method" }, { "$ref": "#/$defs/has_maxDepth" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "complexity.method-length" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_method" }, { "$ref": "#/$defs/has_codeLines" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "readability.parameter-count" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_method" }, { "$ref": "#/$defs/has_parameters" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "cohesion.lcom4" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_components" }, { "$ref": "#/$defs/has_nodes" }, { "$ref": "#/$defs/has_edges" }, { "$ref": "#/$defs/has_attribution" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "coupling.module-cycle" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_cycle" }, { "$ref": "#/$defs/has_newEdges" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "coupling.typescript-file-cycle" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_cycle" }, { "$ref": "#/$defs/has_newEdges" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "coupling.boundary" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_forbiddenDependency" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "coupling.main-sequence-distance" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_mainSequence" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "structure.file-length" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_fileLength" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "const": "structure.duplication" } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_duplicateGroup" }] } } } } } } },
+        { "if": { "properties": { "ruleId": { "pattern": "^correctness\\." } }, "required": ["ruleId"] }, "then": { "properties": { "findings": { "items": { "properties": { "evidence": { "allOf": [{ "$ref": "#/$defs/has_diagnostic" }] } } } } } } },
+        { "if": { "properties": { "status": { "const": "complete" } } }, "then": { "properties": { "evaluationId": { "type": "string" }, "ruleId": { "type": "string" }, "rulesetVersion": { "type": "string" }, "definition": { "type": "string" }, "intent": { "type": "string" }, "deductionPerFinding": { "type": "integer" } } }, "else": { "properties": { "findings": { "maxItems": 0 }, "reasons": { "minItems": 1 } } } }
+      ],
+      "properties": {
+        "contractVersion": { "const": "1" },
+        "status": { "enum": ["complete", "error"] },
+        "evaluationId": { "type": ["string", "null"] },
+        "ruleId": { "type": ["string", "null"] },
+        "rulesetVersion": { "type": ["string", "null"] },
+        "definition": { "type": ["string", "null"] },
+        "intent": { "type": ["string", "null"] },
+        "limit": {},
+        "deductionPerFinding": { "type": ["integer", "null"] },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["contextId", "attribution", "locations", "actual", "limit", "deduction", "calculation", "evidence"],
+            "properties": {
+              "contextId": { "type": "string" },
+              "attribution": { "$ref": "common.v1.schema.json#/$defs/attribution" },
+              "locations": { "type": "array", "items": { "$ref": "common.v1.schema.json#/$defs/location" } },
+              "actual": {},
+              "limit": {},
+              "deduction": { "type": "integer" },
+              "calculation": { "type": "string" },
+              "evidence": { "type": "array", "items": { "$ref": "evidence.v1.schema.json" } }
+            }
+          }
+        },
+        "reasons": { "type": "array", "items": { "$ref": "common.v1.schema.json#/$defs/reason" } }
+      }
+    }
+  },
+  "oneOf": [{ "$ref": "#/$defs/input" }, { "$ref": "#/$defs/output" }]
+}

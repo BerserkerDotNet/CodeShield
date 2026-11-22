@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CodeShield.Abstractions/CodeShield.Abstractions.csproj" />
+    <Project Path="src/CodeShield.Correctness/CodeShield.Correctness.csproj" />
+    <Project Path="src/CodeShield.Assessment/CodeShield.Assessment.csproj" />
+    <Project Path="src/CodeShield.Core/CodeShield.Core.csproj" />
+    <Project Path="src/CodeShield.CSharp/CodeShield.CSharp.csproj" />
+    <Project Path="src/CodeShield.CSharp.Workspace/CodeShield.CSharp.Workspace.csproj" />
+    <Project Path="src/CodeShield.Git/CodeShield.Git.csproj" />
+    <Project Path="src/CodeShield.Mcp/CodeShield.Mcp.csproj" />
+    <Project Path="src/CodeShield.TypeScript/CodeShield.TypeScript.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CodeShield.Core.Tests/CodeShield.Core.Tests.csproj" />
+    <Project Path="tests/CodeShield.CSharp.Tests/CodeShield.CSharp.Tests.csproj" />
+    <Project Path="tests/CodeShield.IntegrationTests/CodeShield.IntegrationTests.csproj" />
+  </Folder>
+</Solution>
+

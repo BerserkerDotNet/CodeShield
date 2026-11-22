@@ -1,0 +1,87 @@
+{
+  "contractVersion": "1",
+  "ruleset": "default",
+  "fixtureFormat": "Each scenario uses its own temporary local Git repository. Commit baselineFiles once; all subsequent evaluations reuse that commit and the first evaluation's resolved ruleset. Paths are relative to the fixture. An expectedFinding is a subset of a finding, not an exhaustive response schema.",
+  "scenarios": [
+    {
+      "name": "TypeScript: assess working bytes, retain original details, and pass exactly at 90",
+      "baselineFiles": {
+        "package.json": "{\"name\":\"fixture\",\"version\":\"1.0.0\",\"private\":true}\n",
+        "tsconfig.json": "{\"compilerOptions\":{\"strict\":true,\"noEmit\":true,\"target\":\"ES2022\"},\"include\":[\"*.ts\"]}\n",
+        "api.ts": "export const revision = 1;\n"
+      },
+      "steps": [
+        {
+          "write": {
+            "api.ts": "export function first(a: number, b: number, c: number, d: number, e: number, f: number) { return a + b + c + d + e + f; }\nexport function last(a: string, b: string, c: string, d: string, e: string, f: string) { return [f, e, d, c, b, a].join(''); }\n"
+          },
+          "stage": ["api.ts"],
+          "evaluateAs": "atThreshold",
+          "expected": {
+            "status": "complete",
+            "score": 90,
+            "passed": true,
+            "chargedFindings": [
+              {"ruleId":"readability.parameter-count","actual":6,"limit":5,"deduction":5,"startLine":1},
+              {"ruleId":"readability.parameter-count","actual":6,"limit":5,"deduction":5,"startLine":2}
+            ]
+          }
+        },
+        {
+          "write": {
+            "api.ts": "export function total(values: readonly number[]) { return values.reduce((sum, value) => sum + value, 0); }\n"
+          },
+          "evaluateAs": "workingTreeWins",
+          "expected": {"status":"complete","score":100,"passed":true,"chargedFindings":[]}
+        },
+        {
+          "detailFrom": "atThreshold",
+          "ruleId": "readability.parameter-count",
+          "expected": {"status":"complete","findingCount":2,"findingStartLines":[1,2],"actual":[6,6],"deductions":[5,5]}
+        },
+        {
+          "detailFrom": "workingTreeWins",
+          "ruleId": "readability.parameter-count",
+          "expected": {"status":"error","reasonCode":"RULE_NOT_FOUND"}
+        },
+        {
+          "restartServer": true,
+          "detailFrom": "atThreshold",
+          "ruleId": "readability.parameter-count",
+          "expected": {"status":"error","reasonCode":"EVALUATION_NOT_FOUND"}
+        }
+      ]
+    },
+    {
+      "name": "C#: distinguish a pre-existing cohesion violation in an edited class from untouched legacy code",
+      "baselineFiles": {
+        "Fixture.csproj": "<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>{{installedPinnedTfm}}</TargetFramework></PropertyGroup></Project>\n",
+        "Counters.cs": "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => ++left;\n    public int NextRight() => ++right;\n}\n",
+        "Other.cs": "public sealed class Other\n{\n    private int total;\n    private string text = \"\";\n    public void Reset() => total = 0;\n    public string Label() => text;\n}\n"
+      },
+      "steps": [
+        {
+          "write": {
+            "Counters.cs": "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => left += 2;\n    public int NextRight() => ++right;\n}\n"
+          },
+          "evaluateAs": "legacyCohesion",
+          "expected": {
+            "status": "complete",
+            "score": 88,
+            "passed": false,
+            "chargedFindings": [
+              {"ruleId":"cohesion.lcom4","file":"Counters.cs","actual":2,"attribution":"pre_existing","deduction":12}
+            ]
+          }
+        },
+        {
+          "write": {
+            "Counters.cs": "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => left += 2;\n    public int NextRight() => ++right;\n    public int Total() => left + right;\n}\n"
+          },
+          "evaluateAs": "connected",
+          "expected": {"status":"complete","score":100,"passed":true,"chargedFindings":[]}
+        }
+      ]
+    }
+  ]
+}

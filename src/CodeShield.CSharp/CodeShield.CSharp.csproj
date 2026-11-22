@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\CodeShield.Abstractions\CodeShield.Abstractions.csproj" />
+    <ProjectReference Include="..\CodeShield.Correctness\CodeShield.Correctness.csproj" />
+    <ProjectReference Include="..\CodeShield.CSharp.Workspace\CodeShield.CSharp.Workspace.csproj" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" PrivateAssets="all" ExcludeAssets="compile" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="CodeShield.CSharp.Tests" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <NetAnalyzersPackageDir>$(PkgMicrosoft_CodeAnalysis_NetAnalyzers)</NetAnalyzersPackageDir>
+    <NetAnalyzersVersion>$([System.IO.Path]::GetFileName($(NetAnalyzersPackageDir.TrimEnd('\').TrimEnd('/'))))</NetAnalyzersVersion>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(NetAnalyzersVersion)' != ''">
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+      <_Parameter1>NetAnalyzersVersion</_Parameter1>
+      <_Parameter2>$(NetAnalyzersVersion)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- The correctness analyzers are loaded at runtime from an "analyzers" folder next to the host assembly. -->
+  <ItemGroup Condition="'$(NetAnalyzersPackageDir)' != ''">
+    <None Include="$(NetAnalyzersPackageDir)\analyzers\dotnet\cs\*.dll"
+          Exclude="$(NetAnalyzersPackageDir)\analyzers\dotnet\cs\*\*"
+          Link="analyzers\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest"
+          Visible="false" />
+  </ItemGroup>
+
+</Project>
+

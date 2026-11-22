@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "forbiddenDependencies": [
+    { "from": "src\\CodeShield.Abstractions\\CodeShield.Abstractions.csproj", "to": "src\\CodeShield.Core\\CodeShield.Core.csproj" },
+    { "from": "src\\CodeShield.Core\\CodeShield.Core.csproj", "to": "src\\CodeShield.CSharp\\CodeShield.CSharp.csproj" },
+    { "from": "src\\CodeShield.Core\\CodeShield.Core.csproj", "to": "src\\CodeShield.TypeScript\\CodeShield.TypeScript.csproj" },
+    { "from": "src\\CodeShield.Core\\CodeShield.Core.csproj", "to": "src\\CodeShield.Git\\CodeShield.Git.csproj" }
+  ]
+}

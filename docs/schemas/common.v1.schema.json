@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeshield.local/schemas/v1/common.v1.schema.json",
+  "title": "CodeShield contract v1 shared definitions",
+  "$defs": {
+    "reason": {
+      "type": "object",
+      "required": ["code", "message", "ruleId", "contextId"],
+      "additionalProperties": false,
+      "properties": {
+        "code": { "enum": ["INVALID_ARGUMENT", "UNSUPPORTED_CONTRACT_VERSION", "UNKNOWN_RULESET", "INVALID_BASELINE", "GIT_FAILURE", "MISSING_ANALYZER", "MISSING_DEPENDENCY", "PROJECT_LOAD_FAILED", "UNRESOLVED_OWNERSHIP", "SUPPRESSED_RULE", "STALE_SNAPSHOT", "UNREADABLE_SOURCE", "UNRECONCILED_SCOPE", "EVALUATION_NOT_FOUND", "RULE_NOT_FOUND", "NO_SUPPORTED_CHANGES"] },
+        "message": { "type": "string" },
+        "ruleId": { "type": ["string", "null"] },
+        "contextId": { "type": ["string", "null"] }
+      }
+    },
+    "location": {
+      "type": "object",
+      "required": ["file", "startLine", "startColumn", "endLine", "endColumn"],
+      "additionalProperties": false,
+      "properties": {
+        "file": { "type": "string", "description": "Repository-relative path using the native platform separator." },
+        "startLine": { "type": "integer", "minimum": 1 },
+        "startColumn": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 },
+        "endColumn": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "attribution": { "enum": ["introduced", "pre_existing", "ambiguous"] },
+    "finding": {
+      "type": "object",
+      "required": ["ruleId", "definition", "intent", "contextId", "attribution", "deduction", "locations", "actual", "limit", "evidence"],
+      "properties": {
+        "ruleId": { "type": "string" },
+        "definition": { "type": "string" },
+        "intent": { "type": "string" },
+        "contextId": { "type": "string" },
+        "attribution": { "$ref": "#/$defs/attribution" },
+        "deduction": { "type": "integer", "minimum": 0 },
+        "locations": { "type": "array", "items": { "$ref": "#/$defs/location" } },
+        "actual": {},
+        "limit": {},
+        "evidence": { "type": "array", "minItems": 1, "items": { "$ref": "evidence.v1.schema.json" } }
+      }
+    }
+  }
+}

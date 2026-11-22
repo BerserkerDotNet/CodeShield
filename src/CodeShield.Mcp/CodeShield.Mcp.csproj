@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>codeshield</AssemblyName>
+    <RootNamespace>CodeShield.Mcp</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\CodeShield.Core\CodeShield.Core.csproj" />
+    <ProjectReference Include="..\CodeShield.Git\CodeShield.Git.csproj" />
+    <ProjectReference Include="..\CodeShield.TypeScript\CodeShield.TypeScript.csproj" />
+    <ProjectReference Include="..\CodeShield.CSharp\CodeShield.CSharp.csproj" />
+  </ItemGroup>
+
+</Project>

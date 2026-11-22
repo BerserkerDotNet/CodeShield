@@ -1,0 +1,451 @@
+{
+  "contractVersion": "1",
+  "ruleset": "default@1.0.0",
+  "threshold": 90,
+  "calibration": "unreviewed: limits and deductions are fixed by the specification; no empirical calibration was performed",
+  "rules": [
+    {
+      "id": "complexity.cyclomatic",
+      "category": "complexity",
+      "limit": 6,
+      "deduction": 12,
+      "calculation": "1 base \u002B counted decisions"
+    },
+    {
+      "id": "complexity.nesting",
+      "category": "complexity",
+      "limit": 2,
+      "deduction": 11,
+      "calculation": "maximum nesting depth"
+    },
+    {
+      "id": "complexity.method-length",
+      "category": "complexity",
+      "limit": 40,
+      "deduction": 11,
+      "calculation": "code lines"
+    },
+    {
+      "id": "cohesion.lcom4",
+      "category": "cohesion",
+      "limit": 1,
+      "deduction": 12,
+      "calculation": "components of the member graph; flagged when 2 or more"
+    },
+    {
+      "id": "coupling.module-cycle",
+      "category": "coupling",
+      "limit": 0,
+      "deduction": 15,
+      "calculation": "new cycle groups"
+    },
+    {
+      "id": "coupling.typescript-file-cycle",
+      "category": "coupling",
+      "limit": 0,
+      "deduction": 15,
+      "calculation": "new file cycle groups"
+    },
+    {
+      "id": "coupling.boundary",
+      "category": "coupling",
+      "limit": 0,
+      "deduction": 15,
+      "calculation": "new forbidden edges"
+    },
+    {
+      "id": "coupling.main-sequence-distance",
+      "category": "coupling",
+      "limit": 0.5,
+      "deduction": 12,
+      "calculation": "D \u003E 0.5 and (new module or D increased by at least 0.1)"
+    },
+    {
+      "id": "structure.file-length",
+      "category": "structure",
+      "limit": 400,
+      "deduction": 11,
+      "calculation": "code lines in the file"
+    },
+    {
+      "id": "structure.duplication",
+      "category": "structure",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "token-exact match groups (connected overlapping matches)"
+    },
+    {
+      "id": "readability.parameter-count",
+      "category": "readability",
+      "limit": 5,
+      "deduction": 5,
+      "calculation": "declared parameters"
+    },
+    {
+      "id": "correctness.csharp.ca2000",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2011",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2012",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2013",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2014",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2016",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2017",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2018",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2019",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2021",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2022",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.csharp.ca2023",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-floating-promises",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-misused-promises",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.await-thenable",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.array-callback-return",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.for-direction",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-async-promise-executor",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-constant-binary-expression",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-dupe-else-if",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-self-assign",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-unsafe-finally",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.no-unsafe-optional-chaining",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.typescript.use-isnan",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    }
+  ],
+  "correctnessSelection": [
+    {
+      "language": "csharp",
+      "analyzerId": "CA2000",
+      "ruleId": "correctness.csharp.ca2000",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2011",
+      "ruleId": "correctness.csharp.ca2011",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2012",
+      "ruleId": "correctness.csharp.ca2012",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2013",
+      "ruleId": "correctness.csharp.ca2013",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2014",
+      "ruleId": "correctness.csharp.ca2014",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2016",
+      "ruleId": "correctness.csharp.ca2016",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2017",
+      "ruleId": "correctness.csharp.ca2017",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2018",
+      "ruleId": "correctness.csharp.ca2018",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2019",
+      "ruleId": "correctness.csharp.ca2019",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2021",
+      "ruleId": "correctness.csharp.ca2021",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2022",
+      "ruleId": "correctness.csharp.ca2022",
+      "options": []
+    },
+    {
+      "language": "csharp",
+      "analyzerId": "CA2023",
+      "ruleId": "correctness.csharp.ca2023",
+      "options": []
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "@typescript-eslint/no-floating-promises",
+      "ruleId": "correctness.typescript.no-floating-promises",
+      "options": [
+        {
+          "allowForKnownSafeCalls": [],
+          "allowForKnownSafePromises": [],
+          "checkThenables": false,
+          "ignoreIIFE": false,
+          "ignoreVoid": false
+        }
+      ]
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "@typescript-eslint/no-misused-promises",
+      "ruleId": "correctness.typescript.no-misused-promises",
+      "options": [
+        {
+          "checksConditionals": true,
+          "checksSpreads": true,
+          "checksVoidReturn": true
+        }
+      ]
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "@typescript-eslint/await-thenable",
+      "ruleId": "correctness.typescript.await-thenable",
+      "options": [
+        {
+          "allowMixedPromiseArrays": false
+        }
+      ]
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "array-callback-return",
+      "ruleId": "correctness.typescript.array-callback-return",
+      "options": [
+        {
+          "allowImplicit": false,
+          "allowVoid": false,
+          "checkForEach": false
+        }
+      ]
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "for-direction",
+      "ruleId": "correctness.typescript.for-direction",
+      "options": []
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "no-async-promise-executor",
+      "ruleId": "correctness.typescript.no-async-promise-executor",
+      "options": []
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "no-constant-binary-expression",
+      "ruleId": "correctness.typescript.no-constant-binary-expression",
+      "options": []
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "no-dupe-else-if",
+      "ruleId": "correctness.typescript.no-dupe-else-if",
+      "options": []
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "no-self-assign",
+      "ruleId": "correctness.typescript.no-self-assign",
+      "options": [
+        {
+          "props": true
+        }
+      ]
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "no-unsafe-finally",
+      "ruleId": "correctness.typescript.no-unsafe-finally",
+      "options": []
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "no-unsafe-optional-chaining",
+      "ruleId": "correctness.typescript.no-unsafe-optional-chaining",
+      "options": [
+        {
+          "disallowArithmeticOperators": false
+        }
+      ]
+    },
+    {
+      "language": "typescript",
+      "analyzerId": "use-isnan",
+      "ruleId": "correctness.typescript.use-isnan",
+      "options": [
+        {
+          "enforceForIndexOf": false,
+          "enforceForSwitchCase": true
+        }
+      ]
+    }
+  ],
+  "analyzers": {
+    "roslyn": "Microsoft.CodeAnalysis.CSharp 5.12.0",
+    "netAnalyzers": "Microsoft.CodeAnalysis.NetAnalyzers 10.0.404",
+    "csharpAnalyzerOptions": "selected CA rules enabled as warnings, every other diagnostic suppressed; no editorconfig or ruleset files are read",
+    "typescript": "5.9.3",
+    "eslint": "10.15.0",
+    "typescriptEslint": "8.73.0",
+    "eslintOptions": "flat config built by the worker: typescript-eslint parser with the owning tsconfig as project; only the selected rules enabled at error severity; repository eslint configuration is ignored"
+  },
+  "runtimes": {
+    "dotnetSdk": "10.0.400",
+    "nodeMinimum": "22",
+    "git": "required on PATH"
+  },
+  "summary": "35 rules"
+}

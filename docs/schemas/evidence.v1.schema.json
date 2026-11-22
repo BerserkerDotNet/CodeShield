@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeshield.local/schemas/v1/evidence.v1.schema.json",
+  "title": "Structured rule evidence item (ruleset default@1.0.0)",
+  "type": "object",
+  "required": ["kind"],
+  "oneOf": [
+    { "properties": { "kind": { "const": "method" }, "name": { "type": "string" }, "unitId": { "type": "string" } }, "required": ["kind", "name", "unitId"] },
+    { "properties": { "kind": { "const": "decisionCount" }, "base": { "const": 1 }, "decisions": { "type": "integer", "minimum": 0 } }, "required": ["kind", "base", "decisions"] },
+    { "properties": { "kind": { "const": "decision" }, "decisionKind": { "type": "string" }, "line": { "type": "integer", "minimum": 1 } }, "required": ["kind", "decisionKind", "line"] },
+    { "properties": { "kind": { "const": "maxDepth" }, "depth": { "type": "integer", "minimum": 0 } }, "required": ["kind", "depth"] },
+    { "properties": { "kind": { "const": "codeLines" }, "count": { "type": "integer", "minimum": 0 } }, "required": ["kind", "count"] },
+    { "properties": { "kind": { "const": "parameters" }, "count": { "type": "integer", "minimum": 0 } }, "required": ["kind", "count"] },
+    { "properties": { "kind": { "const": "fileLength" }, "codeLines": { "type": "integer" }, "baselineCodeLines": { "type": ["integer", "null"] }, "reason": { "type": "string" } }, "required": ["kind", "codeLines", "reason"] },
+    { "properties": { "kind": { "const": "components" }, "count": { "type": "integer" }, "groups": { "type": "array", "items": { "type": "array", "items": { "type": "string" } } } }, "required": ["kind", "count", "groups"] },
+    { "properties": { "kind": { "const": "nodes" }, "nodes": { "type": "array", "items": { "type": "object", "required": ["id", "name"], "additionalProperties": false, "properties": { "id": { "type": "string", "minLength": 1 }, "name": { "type": "string" } } } } }, "required": ["kind", "nodes"] },
+    { "properties": { "kind": { "const": "edges" }, "edges": { "type": "array", "items": { "type": "object", "required": ["from", "to"], "properties": { "from": { "type": "string" }, "to": { "type": "string" }, "reason": { "type": "string" } } } } }, "required": ["kind", "edges"] },
+    { "properties": { "kind": { "const": "attribution" }, "baselineComponents": { "type": ["integer", "null"] } }, "required": ["kind", "baselineComponents"] },
+    { "properties": { "kind": { "const": "duplicateGroup" }, "occurrences": { "type": "array", "minItems": 2, "items": { "$ref": "common.v1.schema.json#/$defs/location" } }, "longestTokens": { "type": "integer", "minimum": 50 } }, "required": ["kind", "occurrences", "longestTokens"] },
+    { "properties": { "kind": { "const": "cycle" }, "members": { "type": "array", "items": { "type": "string" } } }, "required": ["kind", "members"] },
+    { "properties": { "kind": { "const": "newEdges" }, "edges": { "type": "array", "items": { "type": "object", "required": ["from", "to"], "properties": { "from": { "type": "string" }, "to": { "type": "string" } } } } }, "required": ["kind", "edges"] },
+    { "properties": { "kind": { "const": "forbiddenDependency" }, "from": { "type": "string" }, "to": { "type": "string" } }, "required": ["kind", "from", "to"] },
+    { "properties": { "kind": { "const": "mainSequence" }, "abstractness": { "type": "number", "minimum": 0, "maximum": 1 }, "instability": { "type": "number", "minimum": 0, "maximum": 1 }, "afferent": { "type": "integer", "minimum": 0 }, "efferent": { "type": "integer", "minimum": 0 }, "eligibleTypes": { "type": "integer", "minimum": 1 }, "abstractTypes": { "type": "integer", "minimum": 0 }, "distance": { "type": "number", "minimum": 0 }, "baselineDistance": { "type": ["number", "null"] }, "baselineEligibleTypes": { "type": ["integer", "null"] }, "baselineAbstractTypes": { "type": ["integer", "null"] }, "baselineAfferent": { "type": ["integer", "null"] }, "baselineEfferent": { "type": ["integer", "null"] } }, "required": ["kind", "abstractness", "instability", "afferent", "efferent", "eligibleTypes", "abstractTypes", "distance", "baselineDistance", "baselineEligibleTypes", "baselineAbstractTypes", "baselineAfferent", "baselineEfferent"] },
+    { "properties": { "kind": { "const": "diagnostic" }, "analyzerId": { "type": "string" }, "message": { "type": "string" }, "unitId": { "type": "string" } }, "required": ["kind", "analyzerId", "message"] }
+  ]
+}
