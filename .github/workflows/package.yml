@@ -50,6 +50,9 @@ jobs:
       - name: TypeScript worker tests
         working-directory: worker
         run: npm test
+      - name: Build TypeScript worker (used by the integration tests from the source tree)
+        working-directory: worker
+        run: npm run build
       - name: Integration tests (real MCP server over stdio, fixture Git repositories)
         run: dotnet test tests/CodeShield.IntegrationTests -c Release --no-build
       - name: Pack, install into a temporary tool path and run the 3 installed-package tests (tool and notices)
