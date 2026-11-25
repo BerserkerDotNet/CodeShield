@@ -22,6 +22,19 @@ public sealed class McpSession : IAsyncDisposable
         return new McpSession(await McpClient.CreateAsync(transport));
     }
 
+    /// <summary>Starts an installed executable (for example the global tool) from an unrelated working directory.</summary>
+    public static async Task<McpSession> StartInstalledAsync(string executable, string workingDirectory, params string[] arguments)
+    {
+        var transport = new StdioClientTransport(new StdioClientTransportOptions
+        {
+            Name = "codeshield",
+            Command = executable,
+            Arguments = arguments,
+            WorkingDirectory = workingDirectory,
+        });
+        return new McpSession(await McpClient.CreateAsync(transport));
+    }
+
     public Task<JsonElement> EvaluateAsync(string workspace, string baseline, string contractVersion = "1") =>
         CallAsync("evaluate_quality", new() { ["contractVersion"] = contractVersion, ["workspace"] = workspace, ["baseline"] = baseline });
 

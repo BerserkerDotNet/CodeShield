@@ -1,4 +1,5 @@
 using CodeShield.Abstractions;
+using CodeShield.Core.Configuration;
 using CodeShield.Core.Contracts;
 using CodeShield.Core.Rules;
 using CodeShield.Core.Rulesets;
@@ -6,7 +7,10 @@ using CodeShield.Core.Scope;
 
 namespace CodeShield.Core.Evaluation;
 
-public sealed record RuleRun(IReadOnlyList<RuleFinding> Findings, IReadOnlyList<CoverageEntry> Coverage);
+public sealed record RuleRun(
+    IReadOnlyList<RuleFinding> Findings,
+    IReadOnlyList<CoverageEntry> Coverage,
+    IReadOnlyDictionary<string, int>? ExcludedFindings = null);
 
 /// <summary>Runs every rule over the bundle and adds coverage for language-wide failures.</summary>
 public sealed class RuleRunner(IEnumerable<IRule> rules)
@@ -15,8 +19,9 @@ public sealed class RuleRunner(IEnumerable<IRule> rules)
 
     public RuleRun Run(Ruleset ruleset, ChangeScope scope, AnalysisBundle bundle)
     {
+        var policy = bundle.Policy ?? RulePolicy.Defaults;
         var input = new RuleInput(ruleset, scope, bundle.Current.Facts, bundle.Baseline.Facts, bundle.Tokens,
-            bundle.Architecture, GraphFailures(scope, bundle));
+            bundle.Architecture, GraphFailures(scope, bundle)) { Policy = policy };
         var findings = new List<RuleFinding>();
         var coverage = new List<CoverageEntry>();
         foreach (var output in _rules.Select(rule => rule.Evaluate(input)))
@@ -26,13 +31,13 @@ public sealed class RuleRunner(IEnumerable<IRule> rules)
         }
 
         coverage.AddRange(AnalysisFailures(bundle));
-        return new RuleRun(findings, coverage);
+        return ExclusionFilter.Apply(new RuleRun(findings, coverage), bundle.Current.Facts, policy);
     }
 
     private static List<Reason> GraphFailures(ChangeScope scope, AnalysisBundle bundle)
     {
         var failures = bundle.Current.Facts.Graph.Unresolved
-            .Where(reason => reason.ContextId is null || scope.Map.IsChanged(reason.ContextId))
+            .Where(reason => reason.ContextId is null || reason.Code == ReasonCodes.ProjectLoadFailed || scope.Map.IsChanged(reason.ContextId))
             .Select(reason => reason with { RuleId = null }).ToList();
         failures.AddRange(bundle.TokenFailures.Select(reason => reason with { RuleId = RuleIds.Duplication }));
         if (bundle.Architecture?.Error is { } error)

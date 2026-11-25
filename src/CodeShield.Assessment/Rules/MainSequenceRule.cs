@@ -25,8 +25,9 @@ public sealed class MainSequenceRule : ContextRuleBase
 
         var rule = input.Ruleset.Get(RuleIds.MainSequence);
         var assessed = new HashSet<string> { RuleIds.MainSequence };
-        return IsViolation(current, baseline, Convert.ToDecimal(rule.Limit ?? 0.5m, System.Globalization.CultureInfo.InvariantCulture))
-            ? new ContextOutcome([ToFinding(rule, context, current, baseline)], assessed)
+        var limit = input.Policy.DecimalLimit(RuleIds.MainSequence, context.ModulePath!, Convert.ToDecimal(rule.Limit ?? 0.5m, System.Globalization.CultureInfo.InvariantCulture));
+        return IsViolation(current, baseline, limit)
+            ? new ContextOutcome([ToFinding(rule, context, (current, baseline), limit)], assessed)
             : new ContextOutcome([], assessed);
     }
 
@@ -60,8 +61,10 @@ public sealed class MainSequenceRule : ContextRuleBase
         return types == 0 || ca + ce == 0 ? null : new Measure(context.Types.Count(type => type.IsAbstract), types, ca, ce);
     }
 
-    private static RuleFinding ToFinding(RuleDefinition rule, ContextFacts context, Measure current, Measure? baseline) =>
-        FindingFactory.Create(rule, new FindingSpec(
+    private static RuleFinding ToFinding(RuleDefinition rule, ContextFacts context, (Measure Current, Measure? Baseline) measures, decimal limit)
+    {
+        var (current, baseline) = measures;
+        return FindingFactory.Create(rule, new FindingSpec(
             context.ContextId, Contracts.Attribution.Introduced, true,
             [FindingFactory.Location(context.ModulePath!, new SourceSpan(1, 1, 1, 1))],
             Math.Round(current.D, 3), $"D = |A + I - 1| = |{current.A:0.###} + {current.I:0.###} - 1|",
@@ -69,7 +72,8 @@ public sealed class MainSequenceRule : ContextRuleBase
                 ("afferent", current.Ca), ("efferent", current.Ce), ("eligibleTypes", current.Types),
                 ("abstractTypes", current.Abstract), ("distance", current.D), ("baselineDistance", baseline?.D),
                 ("baselineEligibleTypes", baseline?.Types), ("baselineAbstractTypes", baseline?.Abstract),
-                ("baselineAfferent", baseline?.Ca), ("baselineEfferent", baseline?.Ce))]));
+                ("baselineAfferent", baseline?.Ca), ("baselineEfferent", baseline?.Ce))], limit));
+    }
 
     /// <summary>D = |A*(Ca+Ce) + Ce*T - T*(Ca+Ce)| / (T*(Ca+Ce)) from integer counts: abstract types, all types, Ca, Ce.</summary>
     private sealed record Measure(int Abstract, int Types, int Ca, int Ce)

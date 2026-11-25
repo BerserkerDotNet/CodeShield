@@ -1,0 +1,49 @@
+﻿{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://codeshield.local/schemas/v1/codeshield-config.v1.schema.json",
+  "title": ".codeshield.json (configuration version 1)",
+  "description": "Cascading policy file. The repository-root file is global; a file in any folder applies to its subtree and overrides setting by setting. Mirrors the loader's validation: unknown properties and rule IDs are rejected, each rule has its own limit domain, and a reason is required to disable a rule, exclude a subtree or loosen a limit.",
+  "type": "object",
+  "required": ["version"],
+  "additionalProperties": false,
+  "properties": {
+    "version": { "const": 1 },
+    "exclude": { "type": "boolean", "description": "Exclude this subtree from charging. Excluded code is still analyzed and stays in the dependency graph, Ca/Ce and duplicate corpus." },
+    "reason": { "$ref": "#/$defs/reason", "description": "Required when exclude is true." },
+    "rules": {
+      "type": "object",
+      "description": "Keyed by rule ID. Only the limit-bearing rules accept 'limit'; cycle, boundary, duplication and correctness rules can only be enabled or disabled.",
+      "propertyNames": { "enum": ["complexity.cyclomatic", "complexity.nesting", "complexity.method-length", "readability.parameter-count", "cohesion.lcom4", "coupling.module-cycle", "coupling.typescript-file-cycle", "coupling.boundary", "coupling.main-sequence-distance", "structure.file-length", "structure.duplication", "correctness.csharp.ca2000", "correctness.csharp.ca2011", "correctness.csharp.ca2012", "correctness.csharp.ca2013", "correctness.csharp.ca2014", "correctness.csharp.ca2016", "correctness.csharp.ca2017", "correctness.csharp.ca2018", "correctness.csharp.ca2019", "correctness.csharp.ca2021", "correctness.csharp.ca2022", "correctness.csharp.ca2023", "correctness.typescript.no-floating-promises", "correctness.typescript.no-misused-promises", "correctness.typescript.await-thenable", "correctness.typescript.array-callback-return", "correctness.typescript.for-direction", "correctness.typescript.no-async-promise-executor", "correctness.typescript.no-constant-binary-expression", "correctness.typescript.no-dupe-else-if", "correctness.typescript.no-self-assign", "correctness.typescript.no-unsafe-finally", "correctness.typescript.no-unsafe-optional-chaining", "correctness.typescript.use-isnan"] },
+      "properties": {
+        "complexity.cyclomatic": { "$ref": "#/$defs/cyclomatic" },
+        "complexity.nesting": { "$ref": "#/$defs/nesting" },
+        "complexity.method-length": { "$ref": "#/$defs/methodLength" },
+        "readability.parameter-count": { "$ref": "#/$defs/parameterCount" },
+        "cohesion.lcom4": { "$ref": "#/$defs/lcom4" },
+        "structure.file-length": { "$ref": "#/$defs/fileLength" },
+        "coupling.main-sequence-distance": { "$ref": "#/$defs/mainSequence" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/enableOnly" }
+    }
+  },
+  "if": { "properties": { "exclude": { "const": true } }, "required": ["exclude"] },
+  "then": { "required": ["version", "reason"] },
+  "$defs": {
+    "reason": { "type": "string", "pattern": "\\S" },
+    "int32": { "type": "integer", "maximum": 2147483647 },
+    "setting": {
+      "type": "object",
+      "properties": { "enabled": { "type": "boolean", "description": "false disables charging for this rule in the subtree; requires reason." }, "reason": { "$ref": "#/$defs/reason" } },
+      "if": { "properties": { "enabled": { "const": false } }, "required": ["enabled"] },
+      "then": { "required": ["reason"] }
+    },
+    "enableOnly": { "allOf": [{ "$ref": "#/$defs/setting" }], "unevaluatedProperties": false },
+    "cyclomatic": { "allOf": [{ "$ref": "#/$defs/setting" }, { "properties": { "limit": { "$ref": "#/$defs/int32", "minimum": 1 } }, "if": { "properties": { "limit": { "exclusiveMinimum": 6 } }, "required": ["limit"] }, "then": { "required": ["reason"] } }], "unevaluatedProperties": false },
+    "nesting": { "allOf": [{ "$ref": "#/$defs/setting" }, { "properties": { "limit": { "$ref": "#/$defs/int32", "minimum": 0 } }, "if": { "properties": { "limit": { "exclusiveMinimum": 2 } }, "required": ["limit"] }, "then": { "required": ["reason"] } }], "unevaluatedProperties": false },
+    "methodLength": { "allOf": [{ "$ref": "#/$defs/setting" }, { "properties": { "limit": { "$ref": "#/$defs/int32", "minimum": 1 } }, "if": { "properties": { "limit": { "exclusiveMinimum": 40 } }, "required": ["limit"] }, "then": { "required": ["reason"] } }], "unevaluatedProperties": false },
+    "parameterCount": { "allOf": [{ "$ref": "#/$defs/setting" }, { "properties": { "limit": { "$ref": "#/$defs/int32", "minimum": 0 } }, "if": { "properties": { "limit": { "exclusiveMinimum": 5 } }, "required": ["limit"] }, "then": { "required": ["reason"] } }], "unevaluatedProperties": false },
+    "lcom4": { "description": "Flagged when the class has more components than the limit.", "allOf": [{ "$ref": "#/$defs/setting" }, { "properties": { "limit": { "$ref": "#/$defs/int32", "minimum": 1 } }, "if": { "properties": { "limit": { "exclusiveMinimum": 1 } }, "required": ["limit"] }, "then": { "required": ["reason"] } }], "unevaluatedProperties": false },
+    "fileLength": { "allOf": [{ "$ref": "#/$defs/setting" }, { "properties": { "limit": { "$ref": "#/$defs/int32", "minimum": 1 } }, "if": { "properties": { "limit": { "exclusiveMinimum": 400 } }, "required": ["limit"] }, "then": { "required": ["reason"] } }], "unevaluatedProperties": false },
+    "mainSequence": { "allOf": [{ "$ref": "#/$defs/setting" }, { "properties": { "limit": { "type": "number", "minimum": 0, "maximum": 1 } }, "if": { "properties": { "limit": { "exclusiveMinimum": 0.5 } }, "required": ["limit"] }, "then": { "required": ["reason"] } }], "unevaluatedProperties": false }
+  }
+}

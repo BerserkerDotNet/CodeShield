@@ -1,0 +1,11 @@
+{
+  "name": "codeshield",
+  "owner": { "name": "CodeShield" },
+  "plugins": [
+    {
+      "name": "codeshield",
+      "source": "./integrations/codeshield",
+      "description": "Deterministic code-quality evaluation for C# and TypeScript changes."
+    }
+  ]
+}

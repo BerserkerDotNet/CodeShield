@@ -27,6 +27,7 @@ public static class ReasonCodes
     public const string UnreconciledScope = "UNRECONCILED_SCOPE";
     public const string EvaluationNotFound = "EVALUATION_NOT_FOUND";
     public const string RuleNotFound = "RULE_NOT_FOUND";
+    public const string InvalidConfiguration = "INVALID_CONFIGURATION";
 }
 
 public static class Languages

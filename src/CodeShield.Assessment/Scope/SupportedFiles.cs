@@ -6,6 +6,7 @@ namespace CodeShield.Core.Scope;
 public sealed class SupportedFiles(IEnumerable<ILanguageAnalyzer> analyzers)
 {
     public const string ArchitectureConfig = ".quality-architecture.json";
+    public const string CodeShieldConfig = ".codeshield.json";
 
     private readonly IReadOnlyList<ILanguageAnalyzer> _analyzers = [.. analyzers];
 
@@ -14,7 +15,11 @@ public sealed class SupportedFiles(IEnumerable<ILanguageAnalyzer> analyzers)
     public bool IsSource(string path) => _analyzers.Any(analyzer => analyzer.IsSource(path));
 
     public bool IsConfiguration(string path) =>
-        path == ArchitectureConfig || _analyzers.Any(analyzer => analyzer.IsConfiguration(path));
+        path == ArchitectureConfig || IsCodeShieldConfig(path)
+        || _analyzers.Any(analyzer => analyzer.IsConfiguration(path));
+
+    public static bool IsCodeShieldConfig(string path) =>
+        path == CodeShieldConfig || path.EndsWith("/" + CodeShieldConfig, StringComparison.Ordinal);
 
     public bool IsRelevant(string path) => IsSource(path) || IsConfiguration(path);
 

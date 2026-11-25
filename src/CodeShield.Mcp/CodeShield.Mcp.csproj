@@ -4,7 +4,31 @@
     <OutputType>Exe</OutputType>
     <AssemblyName>codeshield</AssemblyName>
     <RootNamespace>CodeShield.Mcp</RootNamespace>
+    <Version>0.1.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+
+    <!-- Framework-dependent, architecture-neutral .NET tool, installed with: dotnet tool install CodeShield.Tool (global) -->
+    <PackAsTool>true</PackAsTool>
+    <ToolCommandName>codeshield</ToolCommandName>
+    <PackageId>CodeShield.Tool</PackageId>
+    <Description>Deterministic code-quality evaluator for AI coding agents, exposed as a local MCP server for C# and TypeScript changes.</Description>
+    <PackageTags>mcp;code-quality;roslyn;typescript;agents</PackageTags>
+    <Authors>BerserkerDotNet</Authors>
+    <Copyright>Copyright (c) 2026 BerserkerDotNet</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/BerserkerDotNet/CodeShield</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/BerserkerDotNet/CodeShield.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <!-- Dependency dotfiles (.npmignore and similar) are part of the locked tree and must not be silently dropped. -->
+    <NoDefaultExcludes>true</NoDefaultExcludes>
+    <PackageReadmeFile>PACKAGE.md</PackageReadmeFile>
+    <RepoRoot>$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)\..\..\'))</RepoRoot>
+    <PayloadDirectory>$(RepoRoot)artifacts\payload\</PayloadDirectory>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="PACKAGE.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="ModelContextProtocol" />
@@ -17,5 +41,65 @@
     <ProjectReference Include="..\CodeShield.TypeScript\CodeShield.TypeScript.csproj" />
     <ProjectReference Include="..\CodeShield.CSharp\CodeShield.CSharp.csproj" />
   </ItemGroup>
+
+  <!--
+    The single producer-side payload pipeline shared by scripts/setup.* (portable directory) and dotnet pack (tool package).
+    It builds the TypeScript worker, stages it with its locked production dependencies, and adds the schemas, release manifest and
+    agent guidance next to the host. npm runs only here; it never runs on a user's machine. Any failure fails publish and pack.
+  -->
+  <Target Name="PreparePayload" BeforeTargets="ComputeResolvedFilesToPublishList">
+    <PropertyGroup>
+      <WorkerSource>$(RepoRoot)worker\</WorkerSource>
+      <WorkerStage>$(PayloadDirectory)worker\</WorkerStage>
+    </PropertyGroup>
+
+    <Exec Command="npm ci" WorkingDirectory="$(WorkerSource)" />
+    <Exec Command="npm run build" WorkingDirectory="$(WorkerSource)" />
+    <Error Condition="!Exists('$(WorkerSource)dist\main.js')" Text="The TypeScript worker build did not produce worker\dist\main.js." />
+
+    <RemoveDir Directories="$(PayloadDirectory)" />
+    <ItemGroup>
+      <WorkerDist Include="$(WorkerSource)dist\**\*" />
+    </ItemGroup>
+    <Copy SourceFiles="@(WorkerDist)" DestinationFiles="@(WorkerDist->'$(WorkerStage)dist\%(RecursiveDir)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="$(WorkerSource)package.json;$(WorkerSource)package-lock.json" DestinationFolder="$(WorkerStage)" />
+    <Exec Command="npm ci --omit=dev" WorkingDirectory="$(WorkerStage)" />
+    <Error Condition="!Exists('$(WorkerStage)node_modules\eslint\package.json')" Text="Locked production dependencies were not installed into the worker payload." />
+
+    <ItemGroup>
+      <PayloadWorker Include="$(WorkerStage)**\*" Exclude="$(WorkerStage)node_modules\.bin\**" />
+      <PayloadSchemas Include="$(RepoRoot)docs\schemas\**\*" />
+      <PayloadGuidance Include="$(RepoRoot)docs\agent-instructions\**\*" />
+      <ResolvedFileToPublish Include="@(PayloadWorker)" RelativePath="worker\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="@(PayloadSchemas)" RelativePath="schemas\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="@(PayloadGuidance)" RelativePath="agent-instructions\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="$(RepoRoot)docs\release-manifest.json" RelativePath="release-manifest.json" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="$(RepoRoot)LICENSE" RelativePath="LICENSE" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="$(RepoRoot)THIRD-PARTY-NOTICES.md" RelativePath="THIRD-PARTY-NOTICES.md" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="$(RepoRoot)licenses\Apache-2.0.txt" RelativePath="licenses\Apache-2.0.txt" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+
+  <!--
+    Upstream attribution notices of every redistributed NuGet package (found through the publish list's package metadata, so the
+    notice set always matches the assemblies actually shipped) are staged next to them under licenses\.
+  -->
+  <Target Name="StagePackageNotices" AfterTargets="ComputeResolvedFilesToPublishList">
+    <ItemGroup>
+      <_ShippedPackageId Include="@(ResolvedFileToPublish->'%(NuGetPackageId)|%(NuGetPackageVersion)')" Condition="'%(ResolvedFileToPublish.NuGetPackageId)' != ''" />
+    </ItemGroup>
+    <ItemGroup>
+      <_PackageIdentity Include="@(_ShippedPackageId->Distinct())">
+        <Id>$([System.String]::Copy('%(Identity)').Split('|')[0])</Id>
+        <Version>$([System.String]::Copy('%(Identity)').Split('|')[1])</Version>
+      </_PackageIdentity>
+      <!-- Every top-level file is listed and filtered by a case-insensitive regex, so LICENSE, license.txt and THIRD-PARTY-NOTICES.TXT match on case-sensitive file systems too. -->
+      <_PackageFile Include="$(NuGetPackageRoot)$([System.String]::Copy('%(_PackageIdentity.Id)').ToLowerInvariant())\%(_PackageIdentity.Version)\*">
+        <NoticeOwner>%(_PackageIdentity.Id)</NoticeOwner>
+      </_PackageFile>
+      <_PackageNotice Include="@(_PackageFile)" Condition="$([System.Text.RegularExpressions.Regex]::IsMatch('%(_PackageFile.Filename)%(_PackageFile.Extension)', '(?i)notice|licen[sc]e|copying'))" />
+      <ResolvedFileToPublish Include="@(_PackageNotice)" RelativePath="licenses\%(_PackageNotice.NoticeOwner)\%(_PackageNotice.Filename)%(_PackageNotice.Extension)" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 
 </Project>

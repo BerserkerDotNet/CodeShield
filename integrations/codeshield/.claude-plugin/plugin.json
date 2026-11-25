@@ -1,0 +1,5 @@
+{
+  "name": "codeshield",
+  "description": "Deterministic code-quality evaluation for C# and TypeScript changes. Requires the CodeShield.Tool .NET global tool.",
+  "version": "0.1.0"
+}

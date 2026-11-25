@@ -32,6 +32,12 @@
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest"
           Visible="false" />
+    <!-- The analyzer package's attribution notice must travel with the redistributed analyzer assemblies. -->
+    <None Include="$(NetAnalyzersPackageDir)\ThirdPartyNotices.txt"
+          Link="licenses\Microsoft.CodeAnalysis.NetAnalyzers\ThirdPartyNotices.txt"
+          CopyToOutputDirectory="PreserveNewest"
+          CopyToPublishDirectory="PreserveNewest"
+          Visible="false" />
   </ItemGroup>
 
 </Project>

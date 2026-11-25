@@ -115,6 +115,13 @@
         "dependencies": {
           "CodeShield.Core": "[1.0.0, )"
         }
+      },
+      "codeshield.typescript": {
+        "type": "Project",
+        "dependencies": {
+          "CodeShield.Abstractions": "[1.0.0, )",
+          "CodeShield.Correctness": "[1.0.0, )"
+        }
       }
     }
   }

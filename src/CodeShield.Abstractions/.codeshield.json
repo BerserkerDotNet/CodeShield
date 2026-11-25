@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "rules": {
+    "coupling.main-sequence-distance": {
+      "enabled": false,
+      "reason": "stable shared contract kernel"
+    }
+  }
+}

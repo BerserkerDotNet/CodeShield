@@ -1,5 +1,6 @@
 using CodeShield.Abstractions;
 using CodeShield.Core.Contracts;
+using CodeShield.Core.Configuration;
 using CodeShield.Core.Rulesets;
 using CodeShield.Core.Scope;
 
@@ -57,6 +58,9 @@ public sealed record RuleInput(
     IReadOnlyList<Reason> GraphFailures)
 {
     public ChangeMap Map => Scope.Map;
+
+    /// <summary>The cascading limits and exclusions; defaults when no configuration exists.</summary>
+    public RulePolicy Policy { get; init; } = RulePolicy.Defaults;
 }
 
 public interface IRule

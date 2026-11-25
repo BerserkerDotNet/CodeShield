@@ -172,6 +172,8 @@ Configure the agent to start the MCP server separately from its instructions. Th
 
 **Recommended distribution:** ship a local .NET MCP host with the official MCP C# SDK, Roslyn-based C# analysis, and a bundled Node.js TypeScript analysis worker. Install both the host and the worker's pinned dependencies during setup, not on tool invocation. Provide a host-appropriate MCP registration example and auto-loaded agent instructions; do not silently modify a repository's configuration. The user explicitly installs/registers the tool. A missing runtime or dependency is an explicit error or incomplete check, not an automatic installation. Pin and test a compatible stable .NET SDK, Node.js runtime, Roslyn/.NET analyzer, TypeScript, ESLint, and typescript-eslint set in release lockfiles; publish those exact versions and options with the ruleset.
 
+**Packaging (MVP implementation).** The host is a .NET global tool (`CodeShield.Tool`, command `codeshield`; `codeshield mcp` or no arguments starts the stdio server, `doctor`, `--version` and `--help` are also provided). One payload target builds the worker, installs its locked production dependencies and stages analyzers, schemas, agent guidance and the release manifest, and feeds both the portable publish and the tool package. Node.js is an external prerequisite (22.13+ in the 22.x line, or 24+, the intersection of the pinned ESLint and typescript-eslint engine ranges); a missing or unsupported Node.js affects only TypeScript analysis. A shared Agent Plugins 1.0 / Claude plugin (`integrations/codeshield`) registers the server and ships the agent guidance as a skill; native clients own registration, trust and removal, and nothing edits user MCP or instruction files.
+
 ## 2. Metrics and scoring
 
 The following is the **approved initial scoring rubric**, not yet empirically calibrated against representative code. No metric proves a design principle is satisfied, and 100 means no deductions were found by the checks performed, not that perfection is proven.
@@ -403,6 +405,36 @@ Calculate a content-based snapshot ID from a sorted inventory of source files, r
 
 Calculate category and total scores using the versioned ruleset, and report findings with the code unit, location, measured value, threshold and deduction. Report the scope, baseline, analyzed snapshot, applicable checks and missing coverage.
 
+### 3.5 Configuration (`.codeshield.json`)
+
+A repository may tune the ruleset with cascading `.codeshield.json` files. The score is then **policy-based**: it measures the code against the configured policy, and the response discloses that policy.
+
+**Location and cascade.** The repository-root file is the global configuration; there is no user-level or machine-wide file. A `.codeshield.json` in any folder applies to that folder's subtree. Settings merge one at a time and the nearest folder wins (as with `.editorconfig`). A nested `exclude: false` re-includes a subtree. Files come from the current inventory (Git-tracked plus non-ignored untracked files, so an uncommitted config is applied). Paths are repository-relative with `/`, compared ordinally, and a prefix matches only at a segment boundary (`src/Foo` does not cover `src/FooBar`).
+
+**Format** ([`schemas/codeshield-config.v1.schema.json`](schemas/codeshield-config.v1.schema.json)); comments are allowed:
+
+```jsonc
+{
+  "version": 1,
+  "exclude": true,                 // optional; requires "reason"
+  "reason": "generated code",
+  "rules": {
+    "complexity.cyclomatic": { "limit": 10, "reason": "legacy parser" },
+    "coupling.main-sequence-distance": { "enabled": false, "reason": "stable shared contract kernel" }
+  }
+}
+```
+
+Unknown properties and unknown rule IDs are rejected. `reason` is required for `exclude: true`, for `enabled: false` and for any limit looser than the ruleset default.
+
+**Configurable limits.** `complexity.cyclomatic` (integer ≥ 1), `complexity.nesting` (≥ 0), `complexity.method-length` (≥ 1), `readability.parameter-count` (≥ 0), `cohesion.lcom4` (≥ 1; flagged when the component count exceeds the limit, default 1), `structure.file-length` (≥ 1) and `coupling.main-sequence-distance` (decimal 0–1). Integer limits are capped at 2147483647; a larger value is `INVALID_CONFIGURATION`. Duplication thresholds and the 0.1 main-sequence regression delta are fixed. Cycle, boundary and correctness rules can only be enabled, disabled or excluded. The pass score (90) and deductions never change. Each finding's `limit` is the effective value at its anchor: the method's file, the class's first declaration file, the file, or the module manifest.
+
+**Exclusions affect charging only.** Excluded code is still analyzed and stays in the dependency graph, Ca/Ce, the duplicate corpus and type information. Exclusions apply after the rules run. A finding is dropped only when its rule is excluded at every one of its location files. A coverage entry becomes `excluded` when the rule is excluded at every anchor of that context (module-level rules: the manifest; file-level rules: the manifest plus the context's owned files; the `repository` context: everywhere). `excluded` overrides that context's own failures, including an excluded project that fails to load, but not shared-input failures.
+
+**Loading.** Configs are loaded and validated once, before analysis; the same bytes are hashed and parsed. An invalid file returns `error` with `INVALID_CONFIGURATION` naming the file and the problem, and no score. Config files join the snapshot inputs, so editing one changes the snapshot ID and can make an earlier evaluation stale. A config-only change does not activate analyzers: it returns `no_changes` with the message "Only CodeShield configuration changed", plus the disclosure.
+
+**Disclosure.** When a config file exists or changed, the response carries `configuration`: `files[]` (`path`, `sha256`, `change`: unchanged, added, modified, deleted or renamed), `changed`, `exclusions[]` (`path`, `reason`, `source`), `overrides[]` (`path`, `ruleId`, `enabled`, `limit`, `reason`, `source`) and `excludedFindings[]` (`ruleId`, `count`). Responses without any config are unchanged. The contract stays `"1"` and the ruleset `default@1.0.0`.
+
 On a subsequent call, use the **same resolved baseline commit** and the exact `ruleset@rulesetVersion` returned by the first call, and evaluate the current working tree again. A missing exact ruleset returns `UNKNOWN_RULESET` rather than silently switching versions. The result covers the full change since the baseline, not just the latest fix.
 
 ## 4. How the agent uses the tool
@@ -412,6 +444,7 @@ On a subsequent call, use the **same resolved baseline commit** and the exact `r
 3. **Improve and repeat:** if the complete score is below 90, address actionable findings with meaningful changes and evaluate again against the same baseline. The agent must not make superficial changes merely to improve the score.
 4. **Stop when blocked:** if improvement would require a questionable refactor or expanding the requested scope, stop and ask the user whether to proceed or change scope.
 5. **Finish or override:** a complete score of 90 or above passes when it reflects the current code. The user may direct the agent to proceed below the threshold or despite incomplete analysis; identify the override and any consequential unresolved findings in the final result. Normal task verification remains separate.
+6. **Configuration:** never create or edit a `.codeshield.json` to raise a score without explicit user direction. If `configuration.changed` is true and the user did not direct the change, stop and report. The summary discloses config files, exclusions, overrides and excluded-finding counts, and labels the score as policy-based.
 
 ### Evaluation summary
 
@@ -426,4 +459,4 @@ Use a compact, readable summary after **each** evaluation. Example values are il
    Parameters    6; limit is 5                    −5
 ```
 
-Use **☑** for a complete passing evaluation, **☒** for a complete evaluation below the target, and **☐** for incomplete or stale analysis. Show no score for incomplete results, errors, or no changes. Do not mark an overridden result as a pass. Omit the previous score on the first evaluation. Provide source locations and full finding details in the report; the summary is not a substitute for that evidence.
+Use **☑** for a complete passing evaluation, **☒** for a complete evaluation below the target, and **☐** for incomplete or stale analysis. When a `configuration` block is present, add a line listing the config files, exclusions, overrides and excluded-finding counts and call the score policy-based. Show no score for incomplete results, errors, or no changes. Do not mark an overridden result as a pass. Omit the previous score on the first evaluation. Provide source locations and full finding details in the report; the summary is not a substitute for that evidence.

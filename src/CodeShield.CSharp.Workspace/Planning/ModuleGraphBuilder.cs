@@ -52,5 +52,5 @@ internal static class ModuleGraphBuilder
     private static IEnumerable<Reason> LoadFailures(IReadOnlyList<ContextPlan> plans) =>
         plans.Where(plan => plan.Project is null)
             .Select(plan => plan.CsprojPath).Distinct(StringComparer.Ordinal)
-            .Select(csproj => new Reason(ReasonCodes.ProjectLoadFailed, $"{csproj} could not be evaluated; its references are unknown."));
+            .Select(csproj => new Reason(ReasonCodes.ProjectLoadFailed, $"{csproj} could not be evaluated; its references are unknown.", null, csproj));
 }

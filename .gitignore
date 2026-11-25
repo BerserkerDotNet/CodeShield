@@ -6,3 +6,28 @@ TestResults/
 artifacts/
 *.user
 *.binlog
+
+# Local secrets, keys and certificates must never be committed.
+.env
+.env.*
+!.env.example
+*.pfx
+*.p12
+*.pem
+*.key
+*.snk
+*.jks
+*.keystore
+secrets.json
+*.secrets.json
+.npmrc
+
+# IDE, OS and tool caches.
+.vs/
+.idea/
+*.suo
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log

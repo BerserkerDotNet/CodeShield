@@ -1,0 +1,63 @@
+name: package
+
+# Builds, tests and verifies the tool package on every supported OS/architecture. Nothing is published here.
+# Also reusable by the release workflow so a release is exactly what CI verified.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: package-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  package:
+    name: package (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm, ubuntu-latest, ubuntu-24.04-arm, macos-15-intel, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Release metadata is consistent
+        shell: pwsh
+        run: scripts/check-release.ps1
+      - name: Build
+        run: dotnet build CodeShield.slnx -c Release
+      - name: Core unit tests
+        run: dotnet test tests/CodeShield.Core.Tests -c Release --no-build
+      - name: C# analyzer tests
+        run: dotnet test tests/CodeShield.CSharp.Tests -c Release --no-build
+      - name: Install worker dependencies
+        working-directory: worker
+        run: npm ci
+      - name: TypeScript worker tests
+        working-directory: worker
+        run: npm test
+      - name: Integration tests (real MCP server over stdio, fixture Git repositories)
+        run: dotnet test tests/CodeShield.IntegrationTests -c Release --no-build
+      - name: Pack, install into a temporary tool path and run the 3 installed-package tests (tool and notices)
+        shell: pwsh
+        run: scripts/verify-install.ps1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CodeShield.Tool-${{ matrix.os }}
+          path: artifacts/feed/CodeShield.Tool.*.nupkg
+          if-no-files-found: error
+          retention-days: 14

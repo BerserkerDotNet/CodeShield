@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using CodeShield.Abstractions;
 
 namespace CodeShield.Core.Contracts;
@@ -40,7 +41,8 @@ public sealed record EvaluationResponse(
     IReadOnlyList<FindingDto> Findings,
     IReadOnlyList<CoverageEntry> Coverage,
     IReadOnlyList<Reason> Reasons,
-    IReadOnlyList<ScopeEntry> Scope);
+    IReadOnlyList<ScopeEntry> Scope,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] ConfigurationDisclosure? Configuration = null);
 
 public sealed record RuleDetailsRequest(string? ContractVersion, string? EvaluationId, string? RuleId);
 

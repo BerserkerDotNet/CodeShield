@@ -1,4 +1,5 @@
 using CodeShield.Abstractions;
+using CodeShield.Core.Configuration;
 using CodeShield.Core.Contracts;
 using CodeShield.Core.Git;
 using CodeShield.Core.Rules;
@@ -31,6 +32,10 @@ public sealed class EvaluationService(
         {
             return ResponseAssembler.Failure(EvaluationStatus.Error, DefaultRuleset.Threshold, [exception.ToReason()]);
         }
+        catch (ConfigurationException exception)
+        {
+            return ResponseAssembler.Failure(EvaluationStatus.Error, DefaultRuleset.Threshold, [new Reason(ReasonCodes.InvalidConfiguration, exception.Message)]);
+        }
         catch (ScopeConflictException exception)
         {
             return ResponseAssembler.Failure(EvaluationStatus.Incomplete, DefaultRuleset.Threshold, [new Reason(ReasonCodes.UnreconciledScope, exception.Message)]);
@@ -40,24 +45,33 @@ public sealed class EvaluationService(
     private async Task<EvaluationResponse> RunAsync(ValidatedRequest request, CancellationToken cancellationToken)
     {
         var scope = await discovery.DiscoverAsync(request.Workspace, request.Baseline, cancellationToken).ConfigureAwait(false);
+        var configuration = ConfigLoader.Load(scope.Root, scope.CurrentPaths, request.Ruleset);
         if (!planner.HasWork(scope))
         {
-            return NoChanges(request.Ruleset, scope);
+            return NoChanges(request.Ruleset, scope, configuration);
         }
 
-        var bundle = await collector.CollectAsync(scope, cancellationToken).ConfigureAwait(false);
+        var collected = await collector.CollectAsync(scope, cancellationToken).ConfigureAwait(false);
+        var bundle = collected with { Policy = configuration.Policy, Inputs = [.. collected.Inputs, .. configuration.Inputs] };
         var run = runner.Run(request.Ruleset, scope, bundle);
         var current = await discovery.DiscoverAsync(request.Workspace, scope.BaselineCommit, cancellationToken).ConfigureAwait(false);
         var stale = bundle.InputsDrifted || current.Fingerprint != scope.Fingerprint || SnapshotIdentity.IsStale(scope.Root, bundle.Inputs);
-        return Complete(request.Ruleset, scope, bundle, run, stale);
+        return Complete(request.Ruleset, scope, (bundle, configuration), run, stale);
     }
 
-    private static EvaluationResponse NoChanges(Ruleset ruleset, ChangeScope scope) =>
-        Base(ruleset, scope, EvaluationStatus.NoChanges, [new Reason("NO_SUPPORTED_CHANGES",
-            "Git found no changed C# or TypeScript files or relevant project configuration; nothing was analyzed.")]);
-
-    private EvaluationResponse Complete(Ruleset ruleset, ChangeScope scope, AnalysisBundle bundle, RuleRun run, bool stale)
+    private static EvaluationResponse NoChanges(Ruleset ruleset, ChangeScope scope, LoadedConfiguration configuration)
     {
+        var disclosure = ConfigDisclosureBuilder.Build(configuration, scope.Map, null);
+        var message = disclosure is { Changed: true }
+            ? "Only CodeShield configuration changed; no C# or TypeScript source or project configuration changed, so nothing was analyzed."
+            : "Git found no changed C# or TypeScript files or relevant project configuration; nothing was analyzed.";
+        return Base(ruleset, scope, EvaluationStatus.NoChanges, [new Reason("NO_SUPPORTED_CHANGES", message)]) with { Configuration = disclosure };
+    }
+
+    private EvaluationResponse Complete(
+        Ruleset ruleset, ChangeScope scope, (AnalysisBundle Bundle, LoadedConfiguration Configuration) analysis, RuleRun run, bool stale)
+    {
+        var (bundle, configuration) = analysis;
         var coverage = run.Coverage.Select(ResponseAssembler.Native).ToList();
         var failed = coverage.Where(entry => entry.Status == CoverageStatus.Failed).ToList();
         var findings = ResponseAssembler.Sort(run.Findings, ruleset);
@@ -75,6 +89,7 @@ public sealed class EvaluationService(
             Categories = ResponseAssembler.Categories(ruleset, findings),
             Findings = [.. findings.Select(ResponseAssembler.ToDto)],
             Coverage = coverage,
+            Configuration = ConfigDisclosureBuilder.Build(configuration, scope.Map, run.ExcludedFindings),
         };
     }
 

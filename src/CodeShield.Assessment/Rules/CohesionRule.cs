@@ -19,20 +19,24 @@ public sealed class CohesionRule : ContextRuleBase
 
         var rule = input.Ruleset.Get(RuleIds.Lcom4);
         var baseline = new BaselineContext(input.Map, BaselineOf(input, context));
-        var findings = affected.Where(@class => @class.Components.Count >= 2)
-            .Select(@class => ToFinding(input, rule, context, (@class, baseline)))
+        var findings = affected.Select(@class => (Class: @class, Limit: LimitOf(input, rule, @class)))
+            .Where(item => item.Class.Components.Count > item.Limit)
+            .Select(item => ToFinding(input, rule, context, (item.Class, baseline), item.Limit))
             .ToList();
         return new ContextOutcome(findings, new HashSet<string> { RuleIds.Lcom4 });
     }
+
+    private static int LimitOf(RuleInput input, RuleDefinition rule, ClassFact @class) =>
+        input.Policy.IntLimit(RuleIds.Lcom4, @class.Locations.Select(location => location.File).FirstOrDefault() ?? string.Empty, (int)rule.Limit!);
 
     private static bool IsAffected(RuleInput input, ClassFact @class) =>
         @class.Locations.Any(location => input.Map.IsSpanAffected(location.File, location.Span));
 
     private static RuleFinding ToFinding(
-        RuleInput input, RuleDefinition rule, ContextFacts context, (ClassFact Class, BaselineContext Baseline) item)
+        RuleInput input, RuleDefinition rule, ContextFacts context, (ClassFact Class, BaselineContext Baseline) item, int limit)
     {
         var @class = item.Class;
-        var attribution = AttributionOf(input, @class, item.Baseline);
+        var attribution = AttributionOf(input, @class, (item.Baseline, limit));
         var evidence = new List<IReadOnlyDictionary<string, object?>>
         {
             Ev.Item("components", ("count", @class.Components.Count), ("groups", @class.Components)),
@@ -43,11 +47,11 @@ public sealed class CohesionRule : ContextRuleBase
         return FindingFactory.Create(rule, new FindingSpec(
             context.ContextId, attribution, true,
             [.. @class.Locations.Select(location => FindingFactory.Location(location.File, location.Span))],
-            @class.Components.Count, $"{@class.Components.Count} connected components of {@class.Nodes.Count} members", evidence));
+            @class.Components.Count, $"{@class.Components.Count} connected components of {@class.Nodes.Count} members", evidence, limit));
     }
 
-    private static string AttributionOf(RuleInput input, ClassFact @class, BaselineContext baseline) =>
-        BaselineComponents(input, @class, baseline) >= 2 ? Attribution.PreExisting : Attribution.Introduced;
+    private static string AttributionOf(RuleInput input, ClassFact @class, (BaselineContext Baseline, int Limit) context) =>
+        BaselineComponents(input, @class, context.Baseline) > context.Limit ? Attribution.PreExisting : Attribution.Introduced;
 
     private static int? BaselineComponents(RuleInput input, ClassFact @class, BaselineContext baseline)
     {

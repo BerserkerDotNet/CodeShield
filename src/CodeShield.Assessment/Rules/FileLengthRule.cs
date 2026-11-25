@@ -18,14 +18,14 @@ public sealed class FileLengthRule : ContextRuleBase
         }
 
         var rule = input.Ruleset.Get(RuleIds.FileLength);
-        var limit = (int)rule.Limit!;
-        var findings = files.Select(file => Evaluate(input, rule, context, file, limit))
+        var findings = files.Select(file => Evaluate(input, rule, context, file))
             .OfType<RuleFinding>().ToList();
         return new ContextOutcome(findings, new HashSet<string> { RuleIds.FileLength });
     }
 
-    private static RuleFinding? Evaluate(RuleInput input, RuleDefinition rule, ContextFacts context, FileFact file, int limit)
+    private static RuleFinding? Evaluate(RuleInput input, RuleDefinition rule, ContextFacts context, FileFact file)
     {
+        var limit = input.Policy.IntLimit(RuleIds.FileLength, file.Path, (int)rule.Limit!);
         if (file.CodeLines <= limit)
         {
             return null;
@@ -37,7 +37,7 @@ public sealed class FileLengthRule : ContextRuleBase
             context.ContextId, Attribution.Introduced, true,
             [FindingFactory.Location(file.Path, new SourceSpan(1, 1, file.CodeLines, 1))],
             file.CodeLines, $"{file.CodeLines} code lines; {reason}",
-            [Ev.Item("fileLength", ("codeLines", file.CodeLines), ("baselineCodeLines", baselineFile?.CodeLines), ("reason", reason))]));
+            [Ev.Item("fileLength", ("codeLines", file.CodeLines), ("baselineCodeLines", baselineFile?.CodeLines), ("reason", reason))], limit));
     }
 
     private static FileFact? BaselineFile(RuleInput input, FileFact file)

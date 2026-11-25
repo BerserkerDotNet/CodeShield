@@ -28,9 +28,15 @@ internal sealed class LedgerAssemblyLoader(IReadOnlyDictionary<string, byte[]> c
     }
 }
 
+/// <summary>Where the pinned correctness analyzers are loaded from; shared by evaluation and installation diagnostics.</summary>
+public static class AnalyzerLocation
+{
+    public static string Directory => Path.Combine(AppContext.BaseDirectory, "analyzers");
+}
+
 internal static class AnalyzerSetFactory
 {
-    public static string AnalyzerDirectory => Path.Combine(AppContext.BaseDirectory, "analyzers");
+    public static string AnalyzerDirectory => AnalyzerLocation.Directory;
 
     public static AnalyzerSet Load(AnalysisEnvironment environment)
     {

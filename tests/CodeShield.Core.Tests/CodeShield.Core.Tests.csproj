@@ -15,6 +15,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\CodeShield.Core\CodeShield.Core.csproj" />
     <ProjectReference Include="..\..\src\CodeShield.Git\CodeShield.Git.csproj" />
+    <ProjectReference Include="..\..\src\CodeShield.TypeScript\CodeShield.TypeScript.csproj" />
   </ItemGroup>
 
   <ItemGroup>

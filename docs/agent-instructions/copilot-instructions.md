@@ -17,6 +17,8 @@ Statuses are different outcomes; never merge them:
 - `error`: the request failed (invalid baseline, unsupported contract version, Git failure). Fix the request or ask the user.
 - `no_changes`: no supported source or configuration changed in scope. Report it; do not invent a score.
 
+Configuration: never create or edit a `.codeshield.json` (cascading limits and exclusions; see the specification, section 3.5) to raise a score without explicit user direction. If a response's `configuration.changed` is true and the user did not direct that change, stop and report it. When a `configuration` block is present, add a card line disclosing the config files, exclusions, overrides and excluded-finding counts, and call the score policy-based. `INVALID_CONFIGURATION` is an `error`: report the file and problem; do not work around it. Coverage status `excluded` means the rule was excluded by policy, not checked.
+
 Scope: the evaluator covers staged, unstaged and untracked supported files against the baseline. If the baseline is not what the user expects, or scope looks wrong, ask instead of guessing.
 
 Summary card after each evaluation (☑ complete and passing, ☒ complete but below target, ☐ incomplete, stale, error or no changes; show no score for ☐; omit "Previous" on the first evaluation):

@@ -1,4 +1,5 @@
 using CodeShield.Abstractions;
+using CodeShield.Core.Configuration;
 using CodeShield.Core.Rules;
 
 namespace CodeShield.Core.Evaluation;
@@ -24,4 +25,5 @@ public sealed record AnalysisBundle(
     ArchitectureConfig? Architecture,
     IReadOnlyList<InputRecord> Inputs,
     bool InputsDrifted = false,
-    IReadOnlyList<Reason>? UnreadableInputs = null);
+    IReadOnlyList<Reason>? UnreadableInputs = null,
+    RulePolicy? Policy = null);

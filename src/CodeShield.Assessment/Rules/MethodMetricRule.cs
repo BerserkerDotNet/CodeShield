@@ -36,10 +36,7 @@ public sealed class MethodMetricRule : ContextRuleBase
         var findings = new List<RuleFinding>();
         foreach (var metric in Metrics)
         {
-            var rule = input.Ruleset.Get(metric.RuleId);
-            var limit = (int)rule.Limit!;
-            findings.AddRange(affected.Where(item => metric.Measure(item.Method) > limit)
-                .Select(item => ToFinding(rule, metric, context, item, attributor.Classify(item.File, item.Method, metric.Measure, limit))));
+            findings.AddRange(affected.Select(item => Evaluate(input, metric, context, (item, attributor))).OfType<RuleFinding>());
         }
 
         return new ContextOutcome(findings, new HashSet<string>(Ids));
@@ -50,8 +47,19 @@ public sealed class MethodMetricRule : ContextRuleBase
             .SelectMany(file => file.Methods.Select(method => (file.Path, method)))
             .Where(item => input.Map.IsSpanAffected(item.Path, item.method.Span));
 
+    private static RuleFinding? Evaluate(
+        RuleInput input, Metric metric, ContextFacts context, ((string File, MethodFact Method) Item, MethodAttributor Attributor) subject)
+    {
+        var (item, attributor) = subject;
+        var rule = input.Ruleset.Get(metric.RuleId);
+        var limit = input.Policy.IntLimit(metric.RuleId, item.File, (int)rule.Limit!);
+        return metric.Measure(item.Method) > limit
+            ? ToFinding(rule, metric, context, item, (attributor.Classify(item.File, item.Method, metric.Measure, limit), limit))
+            : null;
+    }
+
     private static RuleFinding ToFinding(
-        RuleDefinition rule, Metric metric, ContextFacts context, (string File, MethodFact Method) item, string attribution)
+        RuleDefinition rule, Metric metric, ContextFacts context, (string File, MethodFact Method) item, (string Attribution, int Limit) verdict)
     {
         var actual = metric.Measure(item.Method);
         var evidence = new List<IReadOnlyDictionary<string, object?>>
@@ -60,8 +68,8 @@ public sealed class MethodMetricRule : ContextRuleBase
         };
         evidence.AddRange(metric.Evidence(item.Method));
         return FindingFactory.Create(rule, new FindingSpec(
-            context.ContextId, attribution, true,
-            [FindingFactory.Location(item.File, item.Method.Span)], actual, metric.Calculate(item.Method), evidence));
+            context.ContextId, verdict.Attribution, true,
+            [FindingFactory.Location(item.File, item.Method.Span)], actual, metric.Calculate(item.Method), evidence, verdict.Limit));
     }
 
     private static IReadOnlyList<IReadOnlyDictionary<string, object?>> ComplexityEvidence(MethodFact method) =>

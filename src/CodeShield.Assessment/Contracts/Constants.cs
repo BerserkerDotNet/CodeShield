@@ -20,4 +20,5 @@ public static class CoverageStatus
     public const string Complete = "complete";
     public const string NotApplicable = "not_applicable";
     public const string Failed = "failed";
+    public const string Excluded = "excluded";
 }

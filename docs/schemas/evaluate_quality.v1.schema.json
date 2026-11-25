@@ -3,6 +3,19 @@
   "$id": "https://codeshield.local/schemas/v1/evaluate_quality.v1.schema.json",
   "title": "evaluate_quality (contract version 1)",
   "$defs": {
+    "configuration": {
+      "type": "object",
+      "description": "Present only when a .codeshield.json exists or changed.",
+      "required": ["files", "changed", "exclusions", "overrides", "excludedFindings"],
+      "additionalProperties": false,
+      "properties": {
+        "files": { "type": "array", "items": { "type": "object", "required": ["path", "sha256", "change"], "additionalProperties": false, "properties": { "path": { "type": "string" }, "sha256": { "type": ["string", "null"] }, "change": { "enum": ["unchanged", "added", "modified", "deleted", "renamed"] } } } },
+        "changed": { "type": "boolean" },
+        "exclusions": { "type": "array", "items": { "type": "object", "required": ["path", "reason", "source"], "additionalProperties": false, "properties": { "path": { "type": "string" }, "reason": { "type": "string" }, "source": { "type": "string" } } } },
+        "overrides": { "type": "array", "items": { "type": "object", "required": ["path", "ruleId", "enabled", "limit", "reason", "source"], "additionalProperties": false, "properties": { "path": { "type": "string" }, "ruleId": { "type": "string" }, "enabled": { "type": ["boolean", "null"] }, "limit": { "type": ["number", "null"] }, "reason": { "type": ["string", "null"] }, "source": { "type": "string" } } } },
+        "excludedFindings": { "type": "array", "items": { "type": "object", "required": ["ruleId", "count"], "additionalProperties": false, "properties": { "ruleId": { "type": "string" }, "count": { "type": "integer", "minimum": 1 } } } }
+      }
+    },
     "input": {
       "type": "object",
       "required": ["contractVersion", "workspace", "baseline"],
@@ -46,6 +59,7 @@
         "rulesetVersion": { "type": ["string", "null"] },
         "analyzerVersions": { "type": "object", "additionalProperties": { "type": "string" } },
         "score": { "type": ["integer", "null"], "minimum": 0, "maximum": 100, "description": "Null unless status is complete." },
+        "configuration": { "$ref": "#/$defs/configuration" },
         "threshold": { "const": 90 },
         "passed": { "type": ["boolean", "null"], "description": "Null unless status is complete; true when score >= 90." },
         "categories": { "type": "array", "items": { "type": "object", "required": ["name", "deduction"], "properties": { "name": { "type": "string" }, "deduction": { "type": "integer" } } } },
@@ -58,7 +72,7 @@
             "properties": {
               "ruleId": { "type": "string" },
               "contextId": { "type": "string" },
-              "status": { "enum": ["complete", "failed", "not_applicable"] },
+              "status": { "enum": ["complete", "failed", "not_applicable", "excluded"] },
               "reasons": { "type": "array", "items": { "$ref": "common.v1.schema.json#/$defs/reason" } }
             }
           }
