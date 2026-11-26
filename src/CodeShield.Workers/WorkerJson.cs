@@ -1,10 +1,10 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
-namespace CodeShield.TypeScript;
+namespace CodeShield.Workers;
 
-/// <summary>Serialization options for the TypeScript worker protocol.</summary>
+/// <summary>Serialization options shared by the out-of-process language worker protocols.</summary>
 public static class WorkerJson
 {
     public static JsonSerializerOptions Options { get; } = new(JsonSerializerDefaults.Web)

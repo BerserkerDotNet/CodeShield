@@ -57,7 +57,7 @@ public sealed class CoverageExclusions(RulePolicy policy, SnapshotFacts facts)
         ruleId is RuleIds.MainSequence or RuleIds.ModuleCycle or RuleIds.Boundary;
 
     private static bool IsGlobal(string contextId) =>
-        contextId is "repository" or Languages.CSharp or Languages.TypeScript;
+        contextId == "repository" || Languages.All.Contains(contextId);
 
     private static string PathOf(string contextId)
     {

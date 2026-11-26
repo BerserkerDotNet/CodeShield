@@ -38,6 +38,6 @@ public static class ServiceRegistration
     }
 
     public static IEnumerable<ILanguageAnalyzer> DefaultAnalyzers() =>
-        [new TypeScriptAnalyzer(), new CodeShield.CSharp.CSharpLanguageAnalyzer()];
+        [new TypeScriptAnalyzer(), new CodeShield.CSharp.CSharpLanguageAnalyzer(), new CodeShield.Kotlin.KotlinAnalyzer()];
 }
 

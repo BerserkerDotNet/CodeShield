@@ -34,4 +34,8 @@ public static class Languages
 {
     public const string CSharp = "csharp";
     public const string TypeScript = "typescript";
+    public const string Kotlin = "kotlin";
+
+    /// <summary>Every supported language; language-wide failures use the language name as their context ID.</summary>
+    public static IReadOnlySet<string> All { get; } = new HashSet<string>(StringComparer.Ordinal) { CSharp, TypeScript, Kotlin };
 }

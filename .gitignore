@@ -2,6 +2,10 @@ bin/
 obj/
 node_modules/
 worker/dist/
+kotlin-worker/dist/
+kotlin-worker/build/
+kotlin-worker/.gradle/
+kotlin-worker/.kotlin/
 TestResults/
 artifacts/
 *.user

@@ -248,6 +248,83 @@
       "limit": null,
       "deduction": 12,
       "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.equals-always-returns-true-or-false",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.equals-with-hash-code-exist",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.exception-raised-in-unexpected-location",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.explicit-garbage-collection-call",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.invalid-range",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.iterator-has-next-calls-next-method",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.iterator-not-throwing-no-such-element-exception",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.throwing-exception-from-finally",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.unconditional-jump-statement-in-loop",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.useless-postfix-expression",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
+    },
+    {
+      "id": "correctness.kotlin.wrong-equals-type-parameter",
+      "category": "correctness",
+      "limit": null,
+      "deduction": 12,
+      "calculation": "analyzer diagnostics not matched to the baseline"
     }
   ],
   "correctnessSelection": [
@@ -431,6 +508,79 @@
           "enforceForSwitchCase": true
         }
       ]
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "EqualsAlwaysReturnsTrueOrFalse",
+      "ruleId": "correctness.kotlin.equals-always-returns-true-or-false",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "EqualsWithHashCodeExist",
+      "ruleId": "correctness.kotlin.equals-with-hash-code-exist",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "ExceptionRaisedInUnexpectedLocation",
+      "ruleId": "correctness.kotlin.exception-raised-in-unexpected-location",
+      "options": {
+        "methodNames": [
+          "equals",
+          "finalize",
+          "hashCode",
+          "toString"
+        ]
+      }
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "ExplicitGarbageCollectionCall",
+      "ruleId": "correctness.kotlin.explicit-garbage-collection-call",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "InvalidRange",
+      "ruleId": "correctness.kotlin.invalid-range",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "IteratorHasNextCallsNextMethod",
+      "ruleId": "correctness.kotlin.iterator-has-next-calls-next-method",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "IteratorNotThrowingNoSuchElementException",
+      "ruleId": "correctness.kotlin.iterator-not-throwing-no-such-element-exception",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "ThrowingExceptionFromFinally",
+      "ruleId": "correctness.kotlin.throwing-exception-from-finally",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "UnconditionalJumpStatementInLoop",
+      "ruleId": "correctness.kotlin.unconditional-jump-statement-in-loop",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "UselessPostfixExpression",
+      "ruleId": "correctness.kotlin.useless-postfix-expression",
+      "options": {}
+    },
+    {
+      "language": "kotlin",
+      "analyzerId": "WrongEqualsTypeParameter",
+      "ruleId": "correctness.kotlin.wrong-equals-type-parameter",
+      "options": {}
     }
   ],
   "analyzers": {
@@ -440,12 +590,17 @@
     "typescript": "5.9.3",
     "eslint": "10.15.0",
     "typescriptEslint": "8.73.0",
-    "eslintOptions": "flat config built by the worker: typescript-eslint parser with the owning tsconfig as project; only the selected rules enabled at error severity; repository eslint configuration is ignored"
+    "eslintOptions": "flat config built by the worker: typescript-eslint parser with the owning tsconfig as project; only the selected rules enabled at error severity; repository eslint configuration is ignored",
+    "detekt": "detekt-cli 1.23.x, installed by the user (not bundled); the version and its Kotlin compiler are reported per run in analyzerVersions",
+    "detektOptions": "config built by the Kotlin worker: only the selected rules active with the options above, no type resolution; repository detekt configuration and baselines are ignored",
+    "kotlinWorker": "CodeShield Kotlin worker: Kotlin PSI from detekt-cli for measurement; Gradle settings and build scripts are read statically and never executed"
   },
   "runtimes": {
     "dotnetSdk": "10.0.400",
     "nodeMinimum": "22",
+    "javaMinimum": "17",
+    "detektCli": "1.23.x",
     "git": "required on PATH"
   },
-  "summary": "35 rules"
+  "summary": "46 rules"
 }

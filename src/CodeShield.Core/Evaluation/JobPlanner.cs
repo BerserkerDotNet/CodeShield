@@ -14,11 +14,19 @@ public sealed class JobPlanner(SupportedFiles supported)
 
     public bool HasWork(ChangeScope scope) => ActiveAnalyzers(scope).Any();
 
+    /// <summary>
+    /// Adapters whose files changed, plus, when <c>.quality-architecture.json</c> changed, every adapter with files in either snapshot.
+    /// An adapter with no files has no modules for the architecture rules to check, so it is not run and its runtime is not required.
+    /// </summary>
     private IEnumerable<ILanguageAnalyzer> ActiveAnalyzers(ChangeScope scope)
     {
         var architectureChanged = scope.Map.Changes.Any(change => change.Path == SupportedFiles.ArchitectureConfig);
-        return supported.Analyzers.Where(analyzer => architectureChanged || scope.Map.Changes.Any(change => Touches(analyzer, change)));
+        return supported.Analyzers.Where(analyzer =>
+            scope.Map.Changes.Any(change => Touches(analyzer, change)) || (architectureChanged && HasFiles(analyzer, scope)));
     }
+
+    private static bool HasFiles(ISourceClassifier analyzer, ChangeScope scope) =>
+        scope.CurrentPaths.Concat(scope.BaselinePaths).Any(path => Relevant(analyzer, path));
 
     private static bool Touches(ISourceClassifier analyzer, FileChange change) =>
         Relevant(analyzer, change.Path) || (change.OldPath is not null && Relevant(analyzer, change.OldPath));

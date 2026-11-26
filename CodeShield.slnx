@@ -7,8 +7,10 @@
     <Project Path="src/CodeShield.CSharp/CodeShield.CSharp.csproj" />
     <Project Path="src/CodeShield.CSharp.Workspace/CodeShield.CSharp.Workspace.csproj" />
     <Project Path="src/CodeShield.Git/CodeShield.Git.csproj" />
+    <Project Path="src/CodeShield.Kotlin/CodeShield.Kotlin.csproj" />
     <Project Path="src/CodeShield.Mcp/CodeShield.Mcp.csproj" />
     <Project Path="src/CodeShield.TypeScript/CodeShield.TypeScript.csproj" />
+    <Project Path="src/CodeShield.Workers/CodeShield.Workers.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/CodeShield.Core.Tests/CodeShield.Core.Tests.csproj" />

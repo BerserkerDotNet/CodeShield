@@ -63,8 +63,8 @@ public sealed class EvaluationService(
     {
         var disclosure = ConfigDisclosureBuilder.Build(configuration, scope.Map, null);
         var message = disclosure is { Changed: true }
-            ? "Only CodeShield configuration changed; no C# or TypeScript source or project configuration changed, so nothing was analyzed."
-            : "Git found no changed C# or TypeScript files or relevant project configuration; nothing was analyzed.";
+            ? "Only CodeShield configuration changed; no C#, TypeScript or Kotlin source or project configuration changed, so nothing was analyzed."
+            : "Git found no changed C#, TypeScript or Kotlin files or relevant project configuration; nothing was analyzed.";
         return Base(ruleset, scope, EvaluationStatus.NoChanges, [new Reason("NO_SUPPORTED_CHANGES", message)]) with { Configuration = disclosure };
     }
 

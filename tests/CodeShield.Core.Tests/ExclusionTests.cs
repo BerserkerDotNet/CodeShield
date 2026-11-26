@@ -64,4 +64,16 @@ public sealed class ExclusionTests
         var graph = shared with { Reasons = [new Reason(ReasonCodes.ProjectLoadFailed, "x")] };
         Assert.Equal(CoverageStatus.Excluded, ExclusionFilter.Apply(new RuleRun([], [graph]), SnapshotFacts.Empty, everywhere).Coverage[0].Status);
     }
+
+    [Fact]
+    public void KotlinLanguageWideFailuresAreMaskedOnlyWhenTheirSubjectsAreExcluded()
+    {
+        var policy = Policy(("k/.codeshield.json", """{ "version": 1, "exclude": true, "reason": "r" }"""));
+        CoverageEntry Failed(string subject) => new("analysis", Languages.Kotlin, CoverageStatus.Failed,
+            [new Reason(ReasonCodes.MissingDependency, "unreadable script", null, subject)]);
+
+        var result = ExclusionFilter.Apply(new RuleRun([], [Failed("k/build.gradle.kts"), Failed("app/build.gradle.kts")]), SnapshotFacts.Empty, policy);
+
+        Assert.Equal([CoverageStatus.Excluded, CoverageStatus.Failed], result.Coverage.Select(entry => entry.Status));
+    }
 }

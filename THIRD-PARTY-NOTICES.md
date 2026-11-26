@@ -22,3 +22,14 @@ terms required for redistribution, are copied to `licenses/<PackageId>/`.
 
 The worker ships production dependencies locked by `worker/package-lock.json` (ESLint, TypeScript, typescript-eslint and their
 transitive packages). Their license files are retained in `worker/node_modules/`.
+
+## Kotlin worker (JVM)
+
+`kotlin-worker/dist/codeshield-kotlin-worker.jar` contains only CodeShield's own MIT-licensed classes. The worker does not
+bundle or redistribute detekt, the Kotlin compiler, the Kotlin standard library or any other dependency. They are loaded at
+run time from the detekt-cli installation the user provides (detekt and Kotlin are Apache-2.0 licensed), and the Java runtime
+is the user's own.
+
+The source repository contains the Gradle wrapper (`kotlin-worker/gradlew`, `gradlew.bat` and
+`gradle/wrapper/gradle-wrapper.jar`; Apache-2.0, Gradle Inc.). It is used only to build the worker jar and is not part of the
+distributed tool.

@@ -1,6 +1,6 @@
 # Code quality evaluator: MVP
 
-The evaluator provides deterministic code-quality feedback to an agent working in a Git repository. The initial languages are C#/.NET and TypeScript, with a design extensible to other languages. Business-requirement validation and LLM review are outside this MVP.
+The evaluator provides deterministic code-quality feedback to an agent working in a Git repository. The initial languages are C#/.NET and TypeScript; Kotlin (JVM, Android and Kotlin Multiplatform Gradle builds) is the third. The design is extensible to other languages. Business-requirement validation and LLM review are outside this MVP.
 
 ## 1. Contract
 
@@ -90,7 +90,7 @@ The agent must not interpret an unknown reason code as success.
 
 Each finding has `ruleId`, `definition`, `intent`, `contextId`, `attribution` (`introduced`, `pre_existing`, or `ambiguous`), `deduction`, `locations`, `actual`, `limit`, and `evidence`. Use a zero deduction for context-only findings. A location has a repository-relative `file`, `startLine`, `startColumn`, `endLine`, and `endColumn`, with one-based lines and columns; graph findings can carry multiple locations or an empty list when no source location exists. `actual` and `limit` are typed JSON values appropriate to the rule or null; `evidence` is an array of objects with a `kind` and rule-specific structured fields. Detail responses include the same finding fields and full evidence, while evaluation findings can include summary evidence.
 
-Each coverage entry has `ruleId`, `contextId`, `status`, and a `reasons` array. Each reason has `code`, `message`, and nullable `ruleId` and `contextId`. An analysis context is identified by its repository-relative project or configuration path plus target framework and configuration where applicable. Paths in responses use the native platform separator. Rule-specific evidence object fields and exact SDK versions are pinned with the ruleset at release; they must be included in the published schema and conformance fixtures.
+Each coverage entry has `ruleId`, `contextId`, `status`, and a `reasons` array. Each reason has `code`, `message`, and nullable `ruleId` and `contextId`. An analysis context is identified by its repository-relative project or configuration path plus target framework and configuration where applicable; a Kotlin context is a Gradle build script plus its source role, such as `app/build.gradle.kts|main` or `app/build.gradle.kts|test`. Paths in responses use the native platform separator. Rule-specific evidence object fields and exact SDK versions are pinned with the ruleset at release; they must be included in the published schema and conformance fixtures.
 
 Coverage contains one entry per rule and analysis context:
 
@@ -108,7 +108,7 @@ The default pass threshold is **90/100**. If the score is below 90, the agent im
 
 Each evaluator rule has its own stable ID, definition and intent. Rule semantics, thresholds and deductions belong to the versioned ruleset. `evaluate_quality` returns the ID, definition and intent alongside each finding, plus summary evidence and the evaluation ID.
 
-Use readable IDs such as `complexity.cyclomatic`, `correctness.csharp.ca2000` and `correctness.typescript.no-floating-promises`. The evaluator ID identifies the rule; the separate ruleset version identifies its exact definition, options and deduction. Underlying analyzer IDs are retained as evidence, not used as the sole evaluator ID.
+Use readable IDs such as `complexity.cyclomatic`, `correctness.csharp.ca2000`, `correctness.typescript.no-floating-promises` and `correctness.kotlin.invalid-range`. The evaluator ID identifies the rule; the separate ruleset version identifies its exact definition, options and deduction. Underlying analyzer IDs are retained as evidence, not used as the sole evaluator ID.
 
 An agent can request more detail for **all findings of a failed rule in one evaluation**:
 
@@ -172,7 +172,9 @@ Configure the agent to start the MCP server separately from its instructions. Th
 
 **Recommended distribution:** ship a local .NET MCP host with the official MCP C# SDK, Roslyn-based C# analysis, and a bundled Node.js TypeScript analysis worker. Install both the host and the worker's pinned dependencies during setup, not on tool invocation. Provide a host-appropriate MCP registration example and auto-loaded agent instructions; do not silently modify a repository's configuration. The user explicitly installs/registers the tool. A missing runtime or dependency is an explicit error or incomplete check, not an automatic installation. Pin and test a compatible stable .NET SDK, Node.js runtime, Roslyn/.NET analyzer, TypeScript, ESLint, and typescript-eslint set in release lockfiles; publish those exact versions and options with the ruleset.
 
-**Packaging (MVP implementation).** The host is a .NET global tool (`CodeShield.Tool`, command `codeshield`; `codeshield mcp` or no arguments starts the stdio server, `doctor`, `--version` and `--help` are also provided). One payload target builds the worker, installs its locked production dependencies and stages analyzers, schemas, agent guidance and the release manifest, and feeds both the portable publish and the tool package. Node.js is an external prerequisite (22.13+ in the 22.x line, or 24+, the intersection of the pinned ESLint and typescript-eslint engine ranges); a missing or unsupported Node.js affects only TypeScript analysis. A shared Agent Plugins 1.0 / Claude plugin (`integrations/codeshield`) registers the server and ships the agent guidance as a skill; native clients own registration, trust and removal, and nothing edits user MCP or instruction files.
+Kotlin is the exception to bundling. Its analysis runs in a CodeShield-built JVM worker on the user's Java runtime, with the user's detekt-cli installation on the class path; detekt-cli supplies the Kotlin compiler's parser and the correctness rules. The release therefore pins a supported range, detekt-cli 1.23.x, rather than one version. The worker is compiled against the 1.23 API, and every pinned rule exists in every 1.23 release. The exact detekt, Kotlin compiler and Java versions used are reported in `analyzerVersions`, and CI tests detekt-cli 1.23.0 (the API the worker is compiled against) and 1.23.8.
+
+**Packaging (MVP implementation).** The host is a .NET global tool (`CodeShield.Tool`, command `codeshield`; `codeshield mcp` or no arguments starts the stdio server, `doctor`, `--version` and `--help` are also provided). One payload target builds the worker, installs its locked production dependencies and stages analyzers, schemas, agent guidance and the release manifest, and feeds both the portable publish and the tool package. Node.js is an external prerequisite (22.13+ in the 22.x line, or 24+, the intersection of the pinned ESLint and typescript-eslint engine ranges); a missing or unsupported Node.js affects only TypeScript analysis. The same target builds the Kotlin worker jar with the pinned Gradle wrapper; the jar contains only CodeShield code, because Kotlin's runtime and compiler come from detekt-cli. A Java runtime 17+ and detekt-cli 1.23.x are external prerequisites (found through `CODESHIELD_JAVA`, `JAVA_HOME` or `PATH`, and through `CODESHIELD_DETEKT` or a `detekt-cli`/`detekt` launcher on `PATH`); a missing or unsupported one affects only Kotlin analysis, which reports `MISSING_ANALYZER`. `codeshield doctor` checks all three runtimes. A shared Agent Plugins 1.0 / Claude plugin (`integrations/codeshield`) registers the server and ships the agent guidance as a skill; native clients own registration, trust and removal, and nothing edits user MCP or instruction files.
 
 ## 2. Metrics and scoring
 
@@ -197,7 +199,7 @@ Start with 100 points, subtract each violation's deduction, and floor the final 
 
 ### Shared measurement rules
 
-The evaluator owns a versioned definition for each metric. C# and TypeScript adapters implement those definitions, rather than blindly adopting tool-specific variants. Conformance examples must verify the detailed rules below before release.
+The evaluator owns a versioned definition for each metric. The C#, TypeScript and Kotlin adapters implement those definitions, rather than blindly adopting tool-specific variants. Conformance examples must verify the detailed rules below before release.
 
 An affected method is a new or modified executable function or method body, identified from the diff and the language syntax tree. A function nested inside another function is measured separately; decisions inside it do not contribute to the enclosing function's complexity or nesting. Constructors and accessors are executable methods for method metrics. Declaration-only methods have no body and are not scored. When mapping a deletion, consult both baseline and current syntax trees; if an entire method is deleted, it has no current method metric.
 
@@ -215,13 +217,30 @@ An `else` branch is at the same depth as its matching `if` branch, not one level
 
 Count a destructured TypeScript parameter as one parameter, not one per binding. For a method containing a nested function, count the two signatures separately.
 
+**Kotlin mapping:**
+
+- **Complexity.**
+  - Kotlin `if` is both the statement and the conditional expression, and counts as `if`.
+  - `when` is the switch. Each non-`else` entry counts as one case, even when it lists several conditions. The `else` entry counts 0.
+  - `for`, `while` and `do...while` are loops, and `catch` counts as for the other languages.
+  - `&&`, `||` and `?:` (elvis, the null-coalescing operator) are the counted short-circuit operators. Safe calls (`?.`), `!!` and scope functions add 0.
+- **Nesting.**
+  - `if`, loops, `when` and `catch` each add one level, and `when` entries add nothing beyond their `when`.
+  - `else if` is at the same depth as its `if`; `try` and `finally` add nothing.
+- **Units.**
+  - Executable units are named functions, including expression-bodied ones; secondary constructors; property accessors with bodies; `init` blocks; and lambdas. A primary constructor has no body and is not scored.
+  - Lambdas and anonymous functions are measured as their own units, like TypeScript arrow functions. Their decisions do not count toward the enclosing function, but their text does count toward its length.
+- **Parameters.** Parameters are the declared value parameters, including those with defaults and `vararg`. An extension receiver and a lambda's implicit `it` are not parameters.
+
 **LCOM4:** for an applicable class, create a graph whose nodes are its concrete instance methods and instance property accessors with bodies, excluding constructors, destructors and empty bodies. Add an undirected edge when two nodes access the same declared instance field or auto-property, or when either directly calls the other. Resolve accesses and calls by symbol, not by text; inherited members and static members are excluded. LCOM4 is the number of connected components, including isolated nodes. A class with two disconnected method groups scores 2 and is flagged. A class without instance state or with fewer than two eligible nodes is inapplicable. Show the nodes, connections and groups as evidence. Constructors are excluded because they can connect otherwise unrelated groups merely by initializing fields.
 
 If a new or modified applicable class exceeds the limit, deduct even if the cohesion issue predates the edit. The finding must distinguish existing and introduced evidence; it must not claim the edit created a pre-existing problem. This does not require automatically rewriting unrelated legacy classes.
 
 For partial C# classes, combine declarations belonging to the same resolved symbol in a context. Treat C# auto-properties and TypeScript parameter properties as instance state. Explicit property getter/setter bodies are eligible nodes; resolve accesses to them as calls to their accessor nodes. Do not invent edges for shared static fields, inherited members, or code inside nested functions. Exclude generated files from scoring by default; project context can still depend on generated declarations, and missing required declarations make analysis incomplete.
 
-**Duplication:** tokenize C# and TypeScript separately, retaining token kinds and exact token text and ignoring comments and whitespace. Compare contiguous token sequences from changed code with other code in the same language. A match qualifies only when each occurrence spans at least **10 code lines and 50 tokens**. A block can match existing code, but at least one occurrence must intersect new or changed code.
+Kotlin LCOM4 is applied to classes (including data, sealed, abstract and inner classes); interfaces, enums, annotation classes and objects are not applicable. Instance state is a class-body property with a backing field or delegate, or a primary-constructor `val`/`var` parameter; companion-object members are static and excluded. Nodes are member functions and custom accessors with non-empty bodies. Because Kotlin analysis has no type resolution, accesses and calls are resolved **syntactically by name within the class**: an unqualified or `this`-qualified name that is not shadowed by a local or parameter, and a call whose argument count fits the member's parameters. A custom accessor is reached as a call to its node; a default accessor or `field` touches the backing field. This can connect members that a symbol-resolving analyzer would keep apart (or the reverse), which is a documented limitation.
+
+**Duplication:** tokenize each language (C#, TypeScript and Kotlin) separately, retaining token kinds and exact token text and ignoring comments and whitespace. Compare contiguous token sequences from changed code with other code in the same language. A match qualifies only when each occurrence spans at least **10 code lines and 50 tokens**. A block can match existing code, but at least one occurrence must intersect new or changed code.
 
 Group occurrences of the same qualifying token sequence. Group wholly contained or partially overlapping matches together: two matches are connected when any of their occurrence ranges overlap in the same file, and a group is a connected component of those matches. Deduct 12 points once per group, not per pair or overlapping match. Use the longest token sequence as the representative; break ties by repository-relative path and start offset in ordinal order. Report all occurrence locations and overlapping matches as evidence, identifying those involving changed code. Similar logic with different identifiers or literals is not an exact token match; semantic duplication is outside this rule. This grouping can combine distinct patterns when they overlap.
 
@@ -229,11 +248,11 @@ Group occurrences of the same qualifying token sequence. Group wholly contained 
 
 ### Dependency and module metrics
 
-For the MVP, a **module** is a .NET project or a TypeScript package. A TypeScript source file belongs to the nearest ancestor directory within the repository containing `package.json`. Build a directed graph of repository modules: an edge from A to B means A depends on B. Include .NET project references and TypeScript imports between repository packages, including type-only imports. Exclude third-party packages. Multiple references from A to B count as one edge. An unresolved dependency makes the affected metric incomplete rather than counting as zero.
+For the MVP, a **module** is a .NET project, a TypeScript package or a Gradle project. A TypeScript source file belongs to the nearest ancestor directory within the repository containing `package.json`. A Kotlin source file belongs to the Gradle project whose source directory contains it (section 3.1). Build a directed graph of repository modules: an edge from A to B means A depends on B. Include .NET project references, TypeScript imports between repository packages, including type-only imports, and Gradle project dependencies (`project(":x")` or type-safe `projects.x` accessors) in non-test configurations. Exclude third-party packages. Multiple references from A to B count as one edge. An unresolved dependency makes the affected metric incomplete rather than counting as zero.
 
 **Cycles:** find strongly connected components in the before and after module graphs. A component containing more than one module represents a cycle group. Also check TypeScript file-level import cycles within each package; exclude type-only imports from this file-level check. Package-level dependency metrics still include type-only imports.
 
-Compare dependency edges before and after the change. A current cycle group is a finding when a newly added edge participates in a cycle, even if the group already contained a cycle. Deduct 15 once per affected current cycle group, not per added edge. A pre-existing group with no new cyclic edge is context only. Match file identities by unchanged path or Git's recognized rename map; identify a .NET module by its `.csproj` path and a TypeScript module by its package's `package.json` path using the same map. An unrecognized move is a deletion and addition. Where identity cannot be matched uniquely, classify affected edge attribution as ambiguous and count it as new while disclosing the uncertainty.
+Compare dependency edges before and after the change. A current cycle group is a finding when a newly added edge participates in a cycle, even if the group already contained a cycle. Deduct 15 once per affected current cycle group, not per added edge. A pre-existing group with no new cyclic edge is context only. Match file identities by unchanged path or Git's recognized rename map; identify a .NET module by its `.csproj` path, a TypeScript module by its package's `package.json` path and a Gradle project by its build-script path (its directory when it has none) using the same map. An unrecognized move is a deletion and addition. Where identity cannot be matched uniquely, classify affected edge attribution as ambiguous and count it as new while disclosing the uncertainty.
 
 **Boundary violations:** compare resolved dependency edges with explicit module-to-module rules in optional `.quality-architecture.json` at the repository root:
 
@@ -249,11 +268,11 @@ Compare dependency edges before and after the change. A current cycle group is a
 }
 ```
 
-Paths identify modules relative to the repository root. Deduct 15 per newly introduced prohibited edge. Without the configuration file this check is inapplicable, not a passed check. Invalid configuration or an unresolved module makes the check incomplete; do not silently ignore the rule.
+Paths identify modules relative to the repository root. Deduct 15 per newly introduced prohibited edge. Without the configuration file this check is inapplicable, not a passed check. Invalid configuration or an unresolved module makes the check incomplete; do not silently ignore the rule. A change to the configuration file re-analyzes every language that has source or project files in either snapshot, even when none of them changed; a language with no files there has no modules to check and is not analyzed, so its runtime is not required.
 
 **Abstractness and instability:** for each affected module, calculate `A = abstract types / all eligible types`, `I = Ce / (Ca + Ce)`, and `D = abs(A + I - 1)`.
 
-- Eligible C# types are classes, records, structs and interfaces; eligible TypeScript types are classes and interfaces. Abstract classes and interfaces count as abstract. Exclude enums, delegates and TypeScript type aliases. Count each resolved declared type once per module and analysis context; merge partial C# declarations. Count only types declared in source files owned by the module, not imported external types.
+- Eligible C# types are classes, records, structs and interfaces; eligible TypeScript types are classes and interfaces; eligible Kotlin types are classes, interfaces and named objects. Abstract classes and interfaces count as abstract, as do Kotlin sealed classes. Exclude enums, delegates, TypeScript type aliases, and Kotlin annotation classes, companion objects and object expressions. A Kotlin Multiplatform `expect` declaration and its `actual` counterparts are one type. Count each resolved declared type once per module and analysis context; merge partial C# declarations. Count only types declared in source files owned by the module, not imported external types.
 - `Ca` is the number of distinct repository modules with an edge into the measured module. `Ce` is the number of distinct repository modules that the measured module depends on. Count modules, not individual references.
 - TypeScript type aliases and structural typing are not represented in abstractness; this limits cross-language comparability.
 
@@ -292,12 +311,25 @@ Use the following deterministic analyzer rules for detectable defects. A new att
 | TypeScript | `no-unsafe-finally` | Control flow in `finally` that can mask errors |
 | TypeScript | `no-unsafe-optional-chaining` | Unsafe use of optional chaining |
 | TypeScript | `use-isnan` | Incorrect comparisons with `NaN` |
+| Kotlin | `EqualsAlwaysReturnsTrueOrFalse` | `equals()` that always returns the same result |
+| Kotlin | `EqualsWithHashCodeExist` | `equals()` and `hashCode()` not overridden together |
+| Kotlin | `ExceptionRaisedInUnexpectedLocation` | Exceptions thrown from `equals`, `finalize`, `hashCode` or `toString` |
+| Kotlin | `ExplicitGarbageCollectionCall` | Explicit garbage collector calls |
+| Kotlin | `InvalidRange` | Ranges that contain no elements |
+| Kotlin | `IteratorHasNextCallsNextMethod` | `Iterator.hasNext()` that calls `next()` |
+| Kotlin | `IteratorNotThrowingNoSuchElementException` | `Iterator.next()` that does not throw `NoSuchElementException` |
+| Kotlin | `ThrowingExceptionFromFinally` | Exceptions thrown from `finally` blocks |
+| Kotlin | `UnconditionalJumpStatementInLoop` | Loops that unconditionally jump out on the first iteration |
+| Kotlin | `UselessPostfixExpression` | Postfix increments or decrements whose result is lost |
+| Kotlin | `WrongEqualsTypeParameter` | `equals()` overloads that do not take `Any?` |
 
-The rule catalog is based on [.NET reliability rules](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/reliability-warnings), [typescript-eslint](https://typescript-eslint.io/rules/), and [ESLint](https://eslint.org/docs/latest/rules/). The evaluator ships with analyzer versions and explicit rule options pinned by its ruleset, and reports the versions used. Changing an analyzer version or rule options requires a new ruleset version. It does not install or download analyzers during evaluation.
+The rule catalog is based on [.NET reliability rules](https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/quality-rules/reliability-warnings), [typescript-eslint](https://typescript-eslint.io/rules/), [ESLint](https://eslint.org/docs/latest/rules/) and the [detekt](https://detekt.dev/docs/rules/potential-bugs) `potential-bugs` and `exceptions` rule sets. The evaluator ships with analyzer versions and explicit rule options pinned by its ruleset, and reports the versions used. Changing an analyzer version or rule options requires a new ruleset version. It does not install or download analyzers during evaluation.
 
 The evaluator uses its own versioned rule configuration and assesses required rules independently of repository suppressions. If a suppression prevents it from assessing a required rule, that check is incomplete rather than a clean pass. Pin exact versions and explicit options in the release ruleset, including default options expressed explicitly; use `ignoreVoid: false` as specified below. Missing required analyzers or type information make affected checks incomplete, not clean passes. These rules can produce false positives and are not comprehensive correctness coverage.
 
-For these catalog entries, use `correctness.csharp.<lowercase-CA-ID>` for C# and `correctness.typescript.<rule-name>` for TypeScript, omitting the `@typescript-eslint/` namespace from the evaluator ID. Retain the full underlying analyzer ID in the finding.
+For these catalog entries, use `correctness.csharp.<lowercase-CA-ID>` for C#, `correctness.typescript.<rule-name>` for TypeScript, omitting the `@typescript-eslint/` namespace from the evaluator ID, and `correctness.kotlin.<kebab-case-detekt-rule>` for Kotlin (`InvalidRange` is `correctness.kotlin.invalid-range`). Retain the full underlying analyzer ID in the finding.
+
+The Kotlin rules are detekt rules that work on syntax alone. They run without type resolution, as `detekt` does without a class path, so rules that require type resolution are not selected. Each rule runs with CodeShield's pinned options; the repository's `detekt.yml`, baseline files and `detekt` Gradle plugin settings are ignored. A file-level `@Suppress`/`@SuppressWarnings` naming a selected rule (by rule ID, `detekt:` or `detekt.` prefix, rule-set ID, alias or `all`) anywhere in a file makes that rule `SUPPRESSED_RULE` for the context, even if the annotation covers only one declaration. A rule that the installed detekt-cli does not provide is `MISSING_ANALYZER`, and a rule that throws while analyzing a file is `PROJECT_LOAD_FAILED`; neither is a clean pass.
 
 Configure `@typescript-eslint/no-floating-promises` with `ignoreVoid: false`: `void` alone does not handle a rejection. Awaiting or returning a promise, or attaching a rejection handler, can satisfy the rule according to the pinned analyzer's behavior; the rule does not prove all asynchronous failures are handled.
 
@@ -305,13 +337,13 @@ Run the selected correctness rules against both snapshots for the same analysis 
 
 ### Calibration and conformance
 
-The shared rules must have fixtures in both languages covering thresholds, exclusions, unchanged baseline issues, changed units, deletions and edge cases. Verify exact measurements, finding identities, deductions and result shape. The approved initial weights are not empirically calibrated until checked against representative examples; a passing score is not a guarantee of exceptional quality.
+The shared rules must have fixtures in every supported language covering thresholds, exclusions, unchanged baseline issues, changed units, deletions and edge cases. Verify exact measurements, finding identities, deductions and result shape. The approved initial weights are not empirically calibrated until checked against representative examples; a passing score is not a guarantee of exceptional quality.
 
-Acceptance tests exercise the real MCP server against temporary Git repositories with C# and TypeScript fixtures. They cover:
+Acceptance tests exercise the real MCP server against temporary Git repositories with C#, TypeScript and Kotlin fixtures. They cover:
 
 - Exact metric values and deductions at thresholds and edge cases.
 - Staged, unstaged, untracked, renamed and deleted files.
-- Project ownership and dependencies, including linked C# files and overlapping TypeScript configurations.
+- Project ownership and dependencies, including linked C# files, overlapping TypeScript configurations, and Gradle settings, source sets and project dependencies.
 - A failing evaluation, a fix, and a passing re-evaluation against the same baseline.
 - Details for multiple findings of one rule, and expired evaluation IDs.
 - Missing analyzers, project-loading failures, stale snapshots and no-change results.
@@ -320,7 +352,7 @@ Unit tests fake Git operations; they do not depend on a real Git repository. Int
 
 Minimum conformance cases include: complexity 6/7; nesting 2/3; method lengths 40/41; file lengths 400/401 and an already oversized legacy file; five/six parameters; LCOM4 one/two components and stateless inapplicability; duplicate matches below and at both minimums, including overlaps; existing/new cyclic edges and type-only imports; distance changes below/at 0.1 and distances at/above 0.5; and every selected correctness diagnostic with a triggering and non-triggering example in its applicable language. Assert separate deductions per context, flooring at zero, score 90 passing, incomplete null scores, and the original evaluation's detail evidence after a subsequent code edit.
 
-For calibration, use a separately reviewed set of clean, borderline and problematic examples in both languages and document false positives, false negatives and resulting scores. Do not claim that the rubric is empirically calibrated until those fixtures have actually been evaluated and reviewed.
+For calibration, use a separately reviewed set of clean, borderline and problematic examples in each language and document false positives, false negatives and resulting scores. Do not claim that the rubric is empirically calibrated until those fixtures have actually been evaluated and reviewed.
 
 ## 3. Tool operation
 
@@ -355,18 +387,19 @@ Evaluate the current working tree against the baseline, rather than giving stage
 
 All qualifying changes since the baseline are included, including any uncommitted work that predated the agent. A Git commit does not identify who made an edit. The evaluator acts only when invoked; it does not monitor the workspace or ask whether it was already dirty. Ignored untracked files are excluded; tracked files remain in scope even when an ignore rule matches them.
 
-The MVP assesses supported C# and TypeScript changes and relevant project or evaluator configuration. Ignore unsupported files, including in mixed-language changes; the score applies only to the supported scope. When no supported change can be assessed, return `no_changes` without a score.
+The MVP assesses supported C#, TypeScript and Kotlin changes and relevant project or evaluator configuration. Ignore unsupported files, including in mixed-language changes; the score applies only to the supported scope. When no supported change can be assessed, return `no_changes` without a score.
 
 #### Find the relevant projects and modules
 
 The Git diff identifies changed paths; it does **not** identify which projects compile them. Discover and map project membership separately for both the baseline and current snapshots:
 
-1. **Inventory project definitions.** From the repository root, enumerate baseline paths using `git ls-tree -r --name-only -z <baseline>` and current tracked and non-ignored untracked paths using `git ls-files --cached --others --exclude-standard -z`. Deduplicate paths and exclude files absent from the current snapshot. Find `.csproj`, `tsconfig.json` and other `tsconfig.*.json` files, and `package.json` files. Include project configuration files even if they are not themselves changed. Generated or ignored project definitions required for correct loading must be reported if unavailable.
+1. **Inventory project definitions.** From the repository root, enumerate baseline paths using `git ls-tree -r --name-only -z <baseline>` and current tracked and non-ignored untracked paths using `git ls-files --cached --others --exclude-standard -z`. Deduplicate paths and exclude files absent from the current snapshot. Find `.csproj`, `tsconfig.json` and other `tsconfig.*.json` files, `package.json` files, and Gradle settings and build scripts (`settings.gradle(.kts)`, `build.gradle(.kts)` and scripts they apply). Include project configuration files even if they are not themselves changed. Generated or ignored project definitions required for correct loading must be reported if unavailable.
 2. **Resolve C# membership.** For each declared target framework in the Debug configuration, use evaluated MSBuild project information to determine which source files each `.csproj` compiles and its project references. Each project/framework combination is a separate analysis context. Do not assume a `.cs` file belongs only to the project in its parent directory: linked files and include/exclude rules can give it zero, one or several owners. Compare canonical paths and retain every owner. A `.csproj` is the module for module metrics; a multi-targeted project has more than one analysis context.
 3. **Resolve TypeScript membership.** Parse each `tsconfig` using TypeScript's configuration and module-resolution rules, including `files`, `include`, `exclude`, `extends`, and project references. Exclude a configuration from standalone analysis when another configuration extends it and no TypeScript project reference points to it; it still contributes settings to the configurations that extend it. This is a heuristic: a directly built configuration that is also extended can be excluded. Map a changed source file to every remaining configuration that includes it, not just the nearest one; each is a separate analysis context. For module metrics, use the closest ancestor directory containing a `package.json` within the repository as its package root; a nested package therefore owns its own files. If none exists, report module ownership as unresolved. A `tsconfig` is an analysis context, not necessarily a package boundary.
-4. **Select the affected contexts.** For added or modified source files, select their current owners. For deleted files, select their baseline owners; for renames or changed membership, consider both old and new paths and owners. If a changed project, imported build configuration, `tsconfig`, extended configuration or package definition changes membership or dependencies, select the affected contexts even when no source line changed.
-5. **Expand for dependency analysis.** Load project references and package dependencies, plus source-level dependencies needed by the rule, to form the relevant before/after graph. This context can include unchanged projects or modules. Loading a dependency for context does not automatically make all its code part of the scored change.
-6. **Report unresolved ownership.** A changed source file with no resolved owner, a missing configuration or dependency, an unsupported project type, or a failed project evaluation is not silently discarded. Report the affected checks as incomplete. A file with multiple owners retains all relevant contexts; equivalent findings in each context receive separate deductions.
+4. **Resolve Kotlin membership.** Read Gradle settings and build scripts (Kotlin DSL and Groovy) statically; never run Gradle, its daemon, plugins or build logic. Each `settings.gradle(.kts)` defines a build whose `include`/`includeFlat` projects, `project(...).projectDir` and `buildFileName` assignments, and `includeBuild` targets are read from literal arguments; a build script outside every build is a single-project build. A Kotlin file belongs to the project whose source directory contains it: the conventional `src/<sourceSet>/kotlin` or `src/<sourceSet>/java`, or a literal `sourceSets` `srcDir` declaration. The deepest matching directory wins. Source sets whose names start with `test` or contain `Test` (such as `androidTest` and `commonTest`) form the project's test context; all others, including Android flavors and Kotlin Multiplatform source sets, form its main context. Each project/context combination is a separate analysis context. Project dependencies are `project(":x")` and type-safe `projects.x` accessors in non-test configurations. Report a non-literal project path or setting, an unresolvable project reference or applied script, and a project dependency declared in a `subprojects`, `allprojects` or `configure` block (which cannot be attributed to a single project) as unresolved rather than guessing. A Gradle project is the module for module metrics.
+5. **Select the affected contexts.** For added or modified source files, select their current owners. For deleted files, select their baseline owners; for renames or changed membership, consider both old and new paths and owners. If a changed project, imported build configuration, `tsconfig`, extended configuration, package definition or Gradle script changes membership or dependencies, select the affected contexts even when no source line changed.
+6. **Expand for dependency analysis.** Load project references and package dependencies, plus source-level dependencies needed by the rule, to form the relevant before/after graph. This context can include unchanged projects or modules. Loading a dependency for context does not automatically make all its code part of the scored change.
+7. **Report unresolved ownership.** A changed source file with no resolved owner, a missing configuration or dependency, an unsupported project type, or a failed project evaluation is not silently discarded. Report the affected checks as incomplete. A file with multiple owners retains all relevant contexts; equivalent findings in each context receive separate deductions.
 
 The discovery commands list repository paths; they do not themselves evaluate project membership. Project evaluation may read locally available project imports and referenced dependencies outside the repository, such as SDKs and packages, but must not automatically download or restore them. Missing dependencies make the affected checks incomplete. External dependencies remain excluded from module-coupling counts.
 
@@ -385,7 +418,7 @@ Map changed ranges to whole methods, classes, files and modules using language-a
 | Duplication | Changed code and potential matches elsewhere in the codebase. |
 | Dependencies and module metrics | Relevant before/after dependency graphs and affected modules. |
 
-An analyzer may need to load a full .NET project or TypeScript project to resolve symbols, and existing tools may run rules over more files than changed. For analyzers under our control, targeted analysis may be possible after project context is loaded; verify each analyzer's capabilities.
+An analyzer may need to load a full .NET project or TypeScript project to resolve symbols, and existing tools may run rules over more files than changed. Kotlin analysis parses each owned file with the Kotlin compiler's PSI parser, as bundled in the user's detekt-cli, and does not resolve types or read dependency class paths. For analyzers under our control, targeted analysis may be possible after project context is loaded; verify each analyzer's capabilities.
 
 The evaluator operates locally and does not send source code to an LLM. It does not explicitly invoke project targets or restore dependencies automatically, and it does not intentionally modify the repository. An agent's call permits MSBuild project evaluation, which may execute project-supplied logic and therefore cannot be assumed side-effect-free. If sufficient context cannot be obtained, report the affected checks as incomplete.
 

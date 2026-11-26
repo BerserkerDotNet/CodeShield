@@ -1,6 +1,6 @@
 ---
 name: quality-check
-description: Evaluate code changes with CodeShield (deterministic quality score for C# and TypeScript) before declaring work ready. Use when the user asks to check, score or verify code quality, or when finishing a coherent code change.
+description: Evaluate code changes with CodeShield (deterministic quality score for C#, TypeScript and Kotlin) before declaring work ready. Use when the user asks to check, score or verify code quality, or when finishing a coherent code change.
 ---
 
 # Code quality (CodeShield)
@@ -16,7 +16,7 @@ When you finish a coherent change (not after every edit) and before you say the 
 Statuses are different outcomes; never merge them:
 
 - `complete`: score and pass are present.
-- `incomplete`: some checks could not run (missing dependency or analyzer, project load failure, unreadable input, stale snapshot). Score and pass are null. Report the reasons and coverage; retry a `STALE_SNAPSHOT` once files stop changing; run `dotnet restore` / install dependencies for `MISSING_DEPENDENCY`.
+- `incomplete`: some checks could not run (missing dependency or analyzer, project load failure, unreadable input, stale snapshot). Score and pass are null. Report the reasons and coverage; retry a `STALE_SNAPSHOT` once files stop changing; run `dotnet restore` / install dependencies for `MISSING_DEPENDENCY`; for `MISSING_ANALYZER`, tell the user which runtime or tool is missing (Node.js for TypeScript, Java 17+ or detekt-cli 1.23.x for Kotlin; `codeshield doctor` lists them).
 - `error`: the request failed (invalid baseline, unsupported contract version, Git failure). Fix the request or ask the user.
 - `no_changes`: no supported source or configuration changed in scope. Report it; do not invent a score.
 

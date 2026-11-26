@@ -47,25 +47,34 @@ public sealed class ReleaseManifestTests
                 calculation = rule.Calculation,
             }),
             correctnessSelection = CorrectnessCatalog.All.Select(rule => new { rule.Language, rule.AnalyzerId, ruleId = rule.EvaluatorId, options = JsonDocument.Parse(rule.OptionsJson).RootElement.Clone() }),
-            analyzers = new
-            {
-                roslyn = "Microsoft.CodeAnalysis.CSharp 5.12.0",
-                netAnalyzers = "Microsoft.CodeAnalysis.NetAnalyzers 10.0.404",
-                csharpAnalyzerOptions = "selected CA rules enabled as warnings, every other diagnostic suppressed; no editorconfig or ruleset files are read",
-                typescript = "5.9.3",
-                eslint = "10.15.0",
-                typescriptEslint = "8.73.0",
-                eslintOptions = "flat config built by the worker: typescript-eslint parser with the owning tsconfig as project; only the selected rules enabled at error severity; repository eslint configuration is ignored",
-            },
-            runtimes = new
-            {
-                dotnetSdk = "10.0.400",
-                nodeMinimum = "22",
-                git = "required on PATH",
-            },
+            analyzers = Analyzers(),
+            runtimes = Runtimes(),
             summary = string.Create(CultureInfo.InvariantCulture, $"{ruleset.Rules.Count} rules"),
         };
     }
+
+    private static object Analyzers() => new
+    {
+        roslyn = "Microsoft.CodeAnalysis.CSharp 5.12.0",
+        netAnalyzers = "Microsoft.CodeAnalysis.NetAnalyzers 10.0.404",
+        csharpAnalyzerOptions = "selected CA rules enabled as warnings, every other diagnostic suppressed; no editorconfig or ruleset files are read",
+        typescript = "5.9.3",
+        eslint = "10.15.0",
+        typescriptEslint = "8.73.0",
+        eslintOptions = "flat config built by the worker: typescript-eslint parser with the owning tsconfig as project; only the selected rules enabled at error severity; repository eslint configuration is ignored",
+        detekt = "detekt-cli 1.23.x, installed by the user (not bundled); the version and its Kotlin compiler are reported per run in analyzerVersions",
+        detektOptions = "config built by the Kotlin worker: only the selected rules active with the options above, no type resolution; repository detekt configuration and baselines are ignored",
+        kotlinWorker = "CodeShield Kotlin worker: Kotlin PSI from detekt-cli for measurement; Gradle settings and build scripts are read statically and never executed",
+    };
+
+    private static object Runtimes() => new
+    {
+        dotnetSdk = "10.0.400",
+        nodeMinimum = "22",
+        javaMinimum = "17",
+        detektCli = "1.23.x",
+        git = "required on PATH",
+    };
 
     private static string RepositoryRoot()
     {

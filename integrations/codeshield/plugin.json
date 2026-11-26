@@ -1,6 +1,6 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "codeshield",
-  "description": "Deterministic code-quality evaluation for C# and TypeScript changes. Requires the CodeShield.Tool .NET global tool.",
+  "description": "Deterministic code-quality evaluation for C#, TypeScript and Kotlin changes. Requires the CodeShield.Tool .NET global tool.",
   "version": "0.1.0"
 }

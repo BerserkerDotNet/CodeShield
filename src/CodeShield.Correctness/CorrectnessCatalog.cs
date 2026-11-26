@@ -3,9 +3,31 @@ namespace CodeShield.Abstractions;
 /// <summary>One selected static-correctness rule. The evaluator ID is derived from the analyzer ID.</summary>
 public sealed record CorrectnessRule(string Language, string AnalyzerId, string Detects, string OptionsJson = "[]")
 {
-    public string EvaluatorId => Language == Languages.CSharp
-        ? $"correctness.csharp.{AnalyzerId.ToLowerInvariant()}"
-        : $"correctness.typescript.{AnalyzerId[(AnalyzerId.LastIndexOf('/') + 1)..]}";
+    public string EvaluatorId => Language switch
+    {
+        Languages.CSharp => $"correctness.csharp.{AnalyzerId.ToLowerInvariant()}",
+        Languages.TypeScript => $"correctness.typescript.{AnalyzerId[(AnalyzerId.LastIndexOf('/') + 1)..]}",
+        Languages.Kotlin => $"correctness.kotlin.{KebabCase(AnalyzerId)}",
+        _ => throw new InvalidOperationException($"No correctness evaluator ID convention for language '{Language}'."),
+    };
+
+    /// <summary>detekt rule IDs are PascalCase (<c>InvalidRange</c>); evaluator IDs use kebab case (<c>invalid-range</c>).</summary>
+    private static string KebabCase(string pascal)
+    {
+        var builder = new System.Text.StringBuilder(pascal.Length + 8);
+        for (var index = 0; index < pascal.Length; index++)
+        {
+            var character = pascal[index];
+            if (char.IsUpper(character) && index > 0)
+            {
+                builder.Append('-');
+            }
+
+            builder.Append(char.ToLowerInvariant(character));
+        }
+
+        return builder.ToString();
+    }
 }
 
 /// <summary>Single source of truth for the pinned correctness rule selection.</summary>
@@ -43,6 +65,18 @@ public static class CorrectnessCatalog
                     """[{"disallowArithmeticOperators":false}]"""),
                 new(Languages.TypeScript, "use-isnan", "Incorrect comparisons with NaN",
                     """[{"enforceForIndexOf":false,"enforceForSwitchCase":true}]"""),
+        new(Languages.Kotlin, "EqualsAlwaysReturnsTrueOrFalse", "equals() that always returns the same result", "{}"),
+        new(Languages.Kotlin, "EqualsWithHashCodeExist", "equals() and hashCode() not overridden together", "{}"),
+        new(Languages.Kotlin, "ExceptionRaisedInUnexpectedLocation", "Exceptions thrown from equals, finalize, hashCode or toString",
+            """{"methodNames":["equals","finalize","hashCode","toString"]}"""),
+        new(Languages.Kotlin, "ExplicitGarbageCollectionCall", "Explicit garbage collector calls", "{}"),
+        new(Languages.Kotlin, "InvalidRange", "Ranges that contain no elements", "{}"),
+        new(Languages.Kotlin, "IteratorHasNextCallsNextMethod", "Iterator.hasNext() that calls next()", "{}"),
+        new(Languages.Kotlin, "IteratorNotThrowingNoSuchElementException", "Iterator.next() that does not throw NoSuchElementException", "{}"),
+        new(Languages.Kotlin, "ThrowingExceptionFromFinally", "Exceptions thrown from finally blocks", "{}"),
+        new(Languages.Kotlin, "UnconditionalJumpStatementInLoop", "Loops that unconditionally jump out on the first iteration", "{}"),
+        new(Languages.Kotlin, "UselessPostfixExpression", "Postfix increments or decrements whose result is lost", "{}"),
+        new(Languages.Kotlin, "WrongEqualsTypeParameter", "equals() overloads that do not take Any?", "{}"),
     ];
 
     public static ICorrectnessSelection Pinned { get; } = new CorrectnessSelection(All);
