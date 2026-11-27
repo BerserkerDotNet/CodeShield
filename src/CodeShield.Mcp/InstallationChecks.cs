@@ -1,4 +1,6 @@
+using CodeShield.Abstractions;
 using CodeShield.CSharp.Correctness;
+using CodeShield.Kotlin;
 using CodeShield.TypeScript;
 
 namespace CodeShield.Mcp;
@@ -8,12 +10,15 @@ internal sealed record Check(string Name, bool Passed, string Detail);
 /// <summary>Verifies the installed payload and prerequisites using the same locations the evaluator resolves at runtime.</summary>
 internal static class InstallationChecks
 {
+    private const string KotlinOnly = "Only Kotlin analysis needs it; C# and TypeScript analysis do not.";
+
     private static readonly string[] WorkerDependencies = ["eslint", "typescript", "typescript-eslint"];
     private static readonly string[] PackagedAssets = ["release-manifest.json", "schemas", "agent-instructions"];
 
     public static async Task<IReadOnlyList<Check>> RunAsync(CancellationToken cancellationToken)
     {
         var location = WorkerLocation.Discover();
+        var kotlin = KotlinLocation.Discover();
         return
         [
             Analyzers(),
@@ -21,6 +26,9 @@ internal static class InstallationChecks
             Worker(location),
             await GitAsync(cancellationToken).ConfigureAwait(false),
             await NodeAsync(location, cancellationToken).ConfigureAwait(false),
+            await JavaAsync(kotlin, cancellationToken).ConfigureAwait(false),
+            Detekt(kotlin),
+            await KotlinWorkerAsync(kotlin, cancellationToken).ConfigureAwait(false),
         ];
     }
 
@@ -74,5 +82,44 @@ internal static class InstallationChecks
         return NodeRequirement.IsSupported(version)
             ? new Check("Node.js", true, output!)
             : new Check("Node.js", false, $"{output} is not supported. Install {NodeRequirement.Description}.");
+    }
+
+    private static async Task<Check> JavaAsync(KotlinLocation location, CancellationToken cancellationToken)
+    {
+        var output = await ToolProbe.RunAsync(location.JavaExecutable, "-version", cancellationToken, readError: true).ConfigureAwait(false);
+        var version = output is null ? null : JavaRequirement.Parse(output);
+        if (version is null)
+        {
+            return new Check("Java", false, $"'{location.JavaExecutable}' could not be run. Install {JavaRequirement.Description} or set {KotlinLocation.JavaVariable} or JAVA_HOME. {KotlinOnly}");
+        }
+
+        var reported = output!.Split('\n')[0].Trim();
+        return JavaRequirement.IsSupported(version)
+            ? new Check("Java", true, $"{reported} ({location.JavaExecutable})")
+            : new Check("Java", false, $"{reported} ({location.JavaExecutable}) is not supported. Install {JavaRequirement.Description}. {KotlinOnly}");
+    }
+
+    private static Check Detekt(KotlinLocation location) =>
+        location.Detekt.IsUsable
+            ? new Check("detekt-cli", true, $"{location.Detekt.Version} ({location.Detekt.Source})")
+            : new Check("detekt-cli", false, $"{location.Detekt.Problem} {KotlinOnly}");
+
+    /// <summary>Runs the worker's version handshake when its prerequisites are present, so a broken class path is caught here.</summary>
+    private static async Task<Check> KotlinWorkerAsync(KotlinLocation location, CancellationToken cancellationToken)
+    {
+        if (location.WorkerJar is null || !File.Exists(location.WorkerJar))
+        {
+            return new Check("Kotlin worker", false, $"Worker jar not found ({location.WorkerJar ?? "no location"}). Reinstall the CodeShield tool.");
+        }
+
+        if (!location.Detekt.IsUsable)
+        {
+            return new Check("Kotlin worker", true, $"{location.WorkerJar} (handshake skipped: detekt-cli is unavailable)");
+        }
+
+        var (versions, failure) = await new KotlinAnalyzer(location, CorrectnessCatalog.Pinned).VersionAsync(cancellationToken).ConfigureAwait(false);
+        return versions is null
+            ? new Check("Kotlin worker", false, $"{failure!.Message} {KotlinOnly}")
+            : new Check("Kotlin worker", true, $"{location.WorkerJar} ({string.Join(", ", versions.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => $"{pair.Key} {pair.Value}"))})");
     }
 }

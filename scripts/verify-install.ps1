@@ -5,7 +5,7 @@
 # artifacts/feed for the CI artifact upload.
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$expectedInstalledTests = 3
+$expectedInstalledTests = 4
 
 function Invoke-Native([string] $What, [scriptblock] $Command) {
     $previous = $ErrorActionPreference

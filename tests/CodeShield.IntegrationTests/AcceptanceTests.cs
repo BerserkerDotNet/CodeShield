@@ -60,19 +60,47 @@ public sealed class AcceptanceTests
     }
 
     [Fact]
-    public async Task CSharp_PreExistingCohesionIsAttributedAndUntouchedLegacyIsNotScored()
+    public Task CSharp_PreExistingCohesionIsAttributedAndUntouchedLegacyIsNotScored() =>
+        AssertPreExistingCohesionIsAttributedUntilConnected(
+            new CohesionScenario(
+                "Counters.cs",
+                new Dictionary<string, string>
+                {
+                    ["Fixture.csproj"] = $"<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>{Tfm}</TargetFramework></PropertyGroup></Project>\n",
+                    ["Counters.cs"] = "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => ++left;\n    public int NextRight() => ++right;\n}\n",
+                    ["Other.cs"] = "public sealed class Other\n{\n    private int total;\n    private string text = \"\";\n    public void Reset() => total = 0;\n    public string Label() => text;\n}\n",
+                },
+                Edited: "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => left += 2;\n    public int NextRight() => ++right;\n}\n",
+                Connected: "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => left += 2;\n    public int NextRight() => ++right;\n    public int Total() => left + right;\n}\n"),
+            response => response);
+
+    [Fact]
+    public Task Kotlin_PreExistingCohesionIsAttributedAndUntouchedLegacyIsNotScored() =>
+        AssertPreExistingCohesionIsAttributedUntilConnected(
+            new CohesionScenario(
+                "src/main/kotlin/app/Counters.kt",
+                new Dictionary<string, string>
+                {
+                    ["build.gradle.kts"] = KotlinFixture.JvmBuild,
+                    ["src/main/kotlin/app/Counters.kt"] = "package app\n\nclass Counters {\n    private var left = 0\n    private var right = 0\n    fun nextLeft() = ++left\n    fun nextRight() = ++right\n}\n",
+                    ["src/main/kotlin/app/Other.kt"] = "package app\n\nclass Other {\n    private var total = 0\n    private var text = \"\"\n    fun reset() { total = 0 }\n    fun label() = text\n}\n",
+                },
+                Edited: "package app\n\nclass Counters {\n    private var left = 0\n    private var right = 0\n    fun nextLeft(): Int { left += 2; return left }\n    fun nextRight() = ++right\n}\n",
+                Connected: "package app\n\nclass Counters {\n    private var left = 0\n    private var right = 0\n    fun nextLeft(): Int { left += 2; return left }\n    fun nextRight() = ++right\n    fun total() = left + right\n}\n"),
+            KotlinFixture.RequireToolchain);
+
+    /// <summary>
+    /// Editing one member of a class that was already split (LCOM4 2) charges the pre-existing finding, while the equally split but
+    /// untouched class is not scored; connecting the two halves clears it.
+    /// </summary>
+    private static async Task AssertPreExistingCohesionIsAttributedUntilConnected(CohesionScenario scenario, Func<JsonElement, JsonElement> requireAnalyzers)
     {
         using var repo = new GitFixture();
-        var baseline = repo.Commit(new Dictionary<string, string>
-        {
-            ["Fixture.csproj"] = $"<Project Sdk=\"Microsoft.NET.Sdk\"><PropertyGroup><TargetFramework>{Tfm}</TargetFramework></PropertyGroup></Project>\n",
-            ["Counters.cs"] = "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => ++left;\n    public int NextRight() => ++right;\n}\n",
-            ["Other.cs"] = "public sealed class Other\n{\n    private int total;\n    private string text = \"\";\n    public void Reset() => total = 0;\n    public string Label() => text;\n}\n",
-        });
-        repo.Write("Counters.cs", "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => left += 2;\n    public int NextRight() => ++right;\n}\n");
+        var baseline = repo.Commit(scenario.Baseline);
+        repo.Write(scenario.Counters, scenario.Edited);
 
         await using var session = await McpSession.StartAsync();
-        var legacy = await session.EvaluateAsync(repo.Root, baseline);
+        var legacy = requireAnalyzers(await session.EvaluateAsync(repo.Root, baseline));
         Assert.Equal("complete", legacy.GetProperty("status").GetString());
         Assert.Equal(88, legacy.GetProperty("score").GetInt32());
         Assert.False(legacy.GetProperty("passed").GetBoolean());
@@ -81,9 +109,9 @@ public sealed class AcceptanceTests
         Assert.Equal("pre_existing", finding.GetProperty("attribution").GetString());
         Assert.Equal(2, finding.GetProperty("actual").GetInt32());
         Assert.Equal(12, finding.GetProperty("deduction").GetInt32());
-        Assert.Equal("Counters.cs", finding.GetProperty("locations")[0].GetProperty("file").GetString());
+        Assert.Equal(scenario.Counters, finding.GetProperty("locations")[0].GetProperty("file").GetString()!.Replace('\\', '/'));
 
-        repo.Write("Counters.cs", "public sealed class Counters\n{\n    private int left;\n    private int right;\n    public int NextLeft() => left += 2;\n    public int NextRight() => ++right;\n    public int Total() => left + right;\n}\n");
+        repo.Write(scenario.Counters, scenario.Connected);
         var connected = await session.EvaluateAsync(repo.Root, baseline);
         Assert.Equal(100, connected.GetProperty("score").GetInt32());
         Assert.True(connected.GetProperty("passed").GetBoolean());
@@ -94,4 +122,7 @@ public sealed class AcceptanceTests
 
     internal static string ReasonCode(JsonElement response) =>
         response.GetProperty("reasons")[0].GetProperty("code").GetString()!;
+
+    /// <summary>A repository whose <paramref name="Counters"/> class is split in the baseline, edited but still split, then connected.</summary>
+    private sealed record CohesionScenario(string Counters, Dictionary<string, string> Baseline, string Edited, string Connected);
 }

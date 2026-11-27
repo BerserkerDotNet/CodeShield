@@ -5,7 +5,7 @@
     {
       "name": "codeshield",
       "source": "./integrations/codeshield",
-      "description": "Deterministic code-quality evaluation for C# and TypeScript changes."
+      "description": "Deterministic code-quality evaluation for C#, TypeScript and Kotlin changes."
     }
   ]
 }

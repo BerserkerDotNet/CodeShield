@@ -68,4 +68,25 @@ public sealed class InstalledToolTests
         Assert.Equal(JsonValueKind.Number, response.GetProperty("score").ValueKind);
         Assert.NotEqual("error", response.GetProperty("status").GetString());
     }
+
+    /// <summary>The package carries the worker jar; Java and detekt-cli come from the user's machine (PATH or CODESHIELD_DETEKT).</summary>
+    [InstalledFact]
+    public async Task EvaluatesKotlinWithThePackagedWorkerAndUserDetekt()
+    {
+        using var repo = new GitFixture();
+        var baseline = repo.Commit(new Dictionary<string, string>
+        {
+            ["build.gradle.kts"] = KotlinFixture.JvmBuild,
+            ["src/main/kotlin/app/Api.kt"] = "package app\n\nval revision = 1\n",
+        });
+        repo.Write("src/main/kotlin/app/Api.kt", "package app\n\nfun h(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int): Int = a + b + c + d + e + f\n");
+
+        await using var session = await StartAsync();
+        var response = KotlinFixture.RequireToolchain(await session.EvaluateAsync(repo.Root, baseline));
+
+        Assert.Equal("complete", response.GetProperty("status").GetString());
+        Assert.Equal(95, response.GetProperty("score").GetInt32());
+        Assert.Contains(response.GetProperty("findings").EnumerateArray(),
+            finding => finding.GetProperty("ruleId").GetString() == "readability.parameter-count");
+    }
 }

@@ -82,6 +82,38 @@
           "expected": {"status":"complete","score":100,"passed":true,"chargedFindings":[]}
         }
       ]
+    },
+    {
+      "name": "Kotlin: distinguish a pre-existing cohesion violation in an edited class from untouched legacy code",
+      "prerequisites": "JDK 17+, the CodeShield Kotlin worker and detekt-cli 1.23.x; without them the evaluation is incomplete with MISSING_ANALYZER.",
+      "baselineFiles": {
+        "build.gradle.kts": "plugins { kotlin(\"jvm\") }\n",
+        "src/main/kotlin/app/Counters.kt": "package app\n\nclass Counters {\n    private var left = 0\n    private var right = 0\n    fun nextLeft() = ++left\n    fun nextRight() = ++right\n}\n",
+        "src/main/kotlin/app/Other.kt": "package app\n\nclass Other {\n    private var total = 0\n    private var text = \"\"\n    fun reset() { total = 0 }\n    fun label() = text\n}\n"
+      },
+      "steps": [
+        {
+          "write": {
+            "src/main/kotlin/app/Counters.kt": "package app\n\nclass Counters {\n    private var left = 0\n    private var right = 0\n    fun nextLeft(): Int { left += 2; return left }\n    fun nextRight() = ++right\n}\n"
+          },
+          "evaluateAs": "legacyCohesion",
+          "expected": {
+            "status": "complete",
+            "score": 88,
+            "passed": false,
+            "chargedFindings": [
+              {"ruleId":"cohesion.lcom4","file":"src/main/kotlin/app/Counters.kt","actual":2,"attribution":"pre_existing","deduction":12}
+            ]
+          }
+        },
+        {
+          "write": {
+            "src/main/kotlin/app/Counters.kt": "package app\n\nclass Counters {\n    private var left = 0\n    private var right = 0\n    fun nextLeft(): Int { left += 2; return left }\n    fun nextRight() = ++right\n    fun total() = left + right\n}\n"
+          },
+          "evaluateAs": "connected",
+          "expected": {"status":"complete","score":100,"passed":true,"chargedFindings":[]}
+        }
+      ]
     }
   ]
 }

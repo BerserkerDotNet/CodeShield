@@ -79,3 +79,27 @@ public sealed class FakeAnalyzer(int methodCount, int parameterCount, Reason? fa
     public Task<TokenizeResult> TokenizeAsync(TokenizeRequest request, CancellationToken cancellationToken) =>
         Task.FromResult(new TokenizeResult([], []));
 }
+
+/// <summary>A Kotlin-like analyzer whose runtime is missing: every call fails with <c>MISSING_ANALYZER</c> and is recorded in <paramref name="calls"/>.</summary>
+public sealed class UnavailableAnalyzer(List<string> calls) : ILanguageAnalyzer
+{
+    private static readonly Reason Missing = new(ReasonCodes.MissingAnalyzer, "no detekt");
+
+    public string Language => Languages.Kotlin;
+
+    public bool IsSource(string repoRelativePath) => repoRelativePath.EndsWith(".kt", StringComparison.Ordinal);
+
+    public bool IsConfiguration(string repoRelativePath) => repoRelativePath.EndsWith(".gradle.kts", StringComparison.Ordinal);
+
+    public Task<LanguageAnalysis> AnalyzeAsync(AnalysisRequest request, CancellationToken cancellationToken)
+    {
+        calls.Add(nameof(AnalyzeAsync));
+        return Task.FromResult(new LanguageAnalysis(Language, new Dictionary<string, string>(), [], ModuleGraphFacts.Empty, [], [], [Missing]));
+    }
+
+    public Task<TokenizeResult> TokenizeAsync(TokenizeRequest request, CancellationToken cancellationToken)
+    {
+        calls.Add(nameof(TokenizeAsync));
+        return Task.FromResult(new TokenizeResult([], [Missing]));
+    }
+}

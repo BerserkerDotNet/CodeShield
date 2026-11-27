@@ -22,9 +22,11 @@ public sealed class EvaluationServiceTests : IDisposable
 
     public void Dispose() => Directory.Delete(_root, recursive: true);
 
-    private EvaluationService Service(ILanguageAnalyzer analyzer, EvaluationStore? store = null)
+    private EvaluationService Service(ILanguageAnalyzer analyzer, EvaluationStore? store = null) => Service([analyzer], store);
+
+    private EvaluationService Service(ILanguageAnalyzer[] analyzers, EvaluationStore? store = null)
     {
-        var supported = new SupportedFiles([analyzer]);
+        var supported = new SupportedFiles(analyzers);
         var planner = new JobPlanner(supported);
         var collector = new SnapshotCollector(planner, supported, new SnapshotMaterializer(_git));
         IRule[] rules = [new MethodMetricRule(), new CohesionRule(), new FileLengthRule(), new MainSequenceRule()];
@@ -103,6 +105,27 @@ public sealed class EvaluationServiceTests : IDisposable
         var response = await EvaluateAsync(Service(new FakeAnalyzer(1, 6)));
         Assert.Equal(EvaluationStatus.NoChanges, response.Status);
         Assert.Equal("NO_SUPPORTED_CHANGES", response.Reasons[0].Code);
+    }
+
+    [Theory]
+    [InlineData(false, EvaluationStatus.Complete)]
+    [InlineData(true, EvaluationStatus.Incomplete)]
+    public async Task ArchitectureChangeRunsOnlyTheAdaptersWithFilesInTheSnapshot(bool hasKotlinFile, string status)
+    {
+        File.WriteAllText(Path.Combine(_root, ".quality-architecture.json"), "{\"version\":1,\"forbiddenDependencies\":[]}\n");
+        _git.Paths.Add(".quality-architecture.json");
+        _git.Changes.Add(new NameStatusEntry(ChangeKind.Modified, ".quality-architecture.json", null));
+        if (hasKotlinFile)
+        {
+            File.WriteAllText(Path.Combine(_root, "b.kt"), "class B\n");
+            _git.Paths.Add("b.kt");
+        }
+
+        var kotlinCalls = new List<string>();
+        var response = await EvaluateAsync(Service([new FakeAnalyzer(1, 6), new UnavailableAnalyzer(kotlinCalls)]));
+
+        Assert.Equal(status, response.Status);
+        Assert.Equal(hasKotlinFile, kotlinCalls.Count > 0);
     }
 
     [Fact]

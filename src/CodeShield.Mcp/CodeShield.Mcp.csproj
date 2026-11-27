@@ -11,8 +11,8 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>codeshield</ToolCommandName>
     <PackageId>CodeShield.Tool</PackageId>
-    <Description>Deterministic code-quality evaluator for AI coding agents, exposed as a local MCP server for C# and TypeScript changes.</Description>
-    <PackageTags>mcp;code-quality;roslyn;typescript;agents</PackageTags>
+    <Description>Deterministic code-quality evaluator for AI coding agents, exposed as a local MCP server for C#, TypeScript and Kotlin changes.</Description>
+    <PackageTags>mcp;code-quality;roslyn;typescript;kotlin;detekt;agents</PackageTags>
     <Authors>BerserkerDotNet</Authors>
     <Copyright>Copyright (c) 2026 BerserkerDotNet</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -40,22 +40,30 @@
     <ProjectReference Include="..\CodeShield.Git\CodeShield.Git.csproj" />
     <ProjectReference Include="..\CodeShield.TypeScript\CodeShield.TypeScript.csproj" />
     <ProjectReference Include="..\CodeShield.CSharp\CodeShield.CSharp.csproj" />
+    <ProjectReference Include="..\CodeShield.Kotlin\CodeShield.Kotlin.csproj" />
   </ItemGroup>
 
   <!--
     The single producer-side payload pipeline shared by scripts/setup.* (portable directory) and dotnet pack (tool package).
-    It builds the TypeScript worker, stages it with its locked production dependencies, and adds the schemas, release manifest and
-    agent guidance next to the host. npm runs only here; it never runs on a user's machine. Any failure fails publish and pack.
+    It builds the TypeScript worker, stages it with its locked production dependencies, builds the Kotlin worker jar with the
+    Gradle wrapper (a JDK 17+ is a producer prerequisite, like npm), and adds the schemas, release manifest and agent guidance next
+    to the host. npm and Gradle run only here; they never run on a user's machine. Any failure fails publish and pack.
   -->
   <Target Name="PreparePayload" BeforeTargets="ComputeResolvedFilesToPublishList">
     <PropertyGroup>
       <WorkerSource>$(RepoRoot)worker\</WorkerSource>
       <WorkerStage>$(PayloadDirectory)worker\</WorkerStage>
+      <KotlinWorkerSource>$(RepoRoot)kotlin-worker\</KotlinWorkerSource>
+      <KotlinWorkerJar>$(KotlinWorkerSource)dist\codeshield-kotlin-worker.jar</KotlinWorkerJar>
     </PropertyGroup>
 
     <Exec Command="npm ci" WorkingDirectory="$(WorkerSource)" />
     <Exec Command="npm run build" WorkingDirectory="$(WorkerSource)" />
     <Error Condition="!Exists('$(WorkerSource)dist\main.js')" Text="The TypeScript worker build did not produce worker\dist\main.js." />
+
+    <Exec Condition="'$(OS)' == 'Windows_NT'" Command="gradlew.bat jar --no-daemon --quiet" WorkingDirectory="$(KotlinWorkerSource)" />
+    <Exec Condition="'$(OS)' != 'Windows_NT'" Command="sh ./gradlew jar --no-daemon --quiet" WorkingDirectory="$(KotlinWorkerSource)" />
+    <Error Condition="!Exists('$(KotlinWorkerJar)')" Text="The Kotlin worker build did not produce kotlin-worker\dist\codeshield-kotlin-worker.jar." />
 
     <RemoveDir Directories="$(PayloadDirectory)" />
     <ItemGroup>
@@ -71,6 +79,7 @@
       <PayloadSchemas Include="$(RepoRoot)docs\schemas\**\*" />
       <PayloadGuidance Include="$(RepoRoot)docs\agent-instructions\**\*" />
       <ResolvedFileToPublish Include="@(PayloadWorker)" RelativePath="worker\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
+      <ResolvedFileToPublish Include="$(KotlinWorkerJar)" RelativePath="kotlin-worker\dist\codeshield-kotlin-worker.jar" CopyToPublishDirectory="PreserveNewest" />
       <ResolvedFileToPublish Include="@(PayloadSchemas)" RelativePath="schemas\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
       <ResolvedFileToPublish Include="@(PayloadGuidance)" RelativePath="agent-instructions\%(RecursiveDir)%(Filename)%(Extension)" CopyToPublishDirectory="PreserveNewest" />
       <ResolvedFileToPublish Include="$(RepoRoot)docs\release-manifest.json" RelativePath="release-manifest.json" CopyToPublishDirectory="PreserveNewest" />

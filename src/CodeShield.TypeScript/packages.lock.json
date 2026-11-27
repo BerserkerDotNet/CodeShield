@@ -10,6 +10,13 @@
         "dependencies": {
           "CodeShield.Abstractions": "[1.0.0, )"
         }
+      },
+      "codeshield.workers": {
+        "type": "Project",
+        "dependencies": {
+          "CodeShield.Abstractions": "[1.0.0, )",
+          "CodeShield.Correctness": "[1.0.0, )"
+        }
       }
     }
   }

@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\CodeShield.Abstractions\CodeShield.Abstractions.csproj" />
+    <ProjectReference Include="..\CodeShield.Correctness\CodeShield.Correctness.csproj" />
+  </ItemGroup>
+
+</Project>

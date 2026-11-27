@@ -1,12 +1,12 @@
 # CodeShield
 
-A deterministic code-quality evaluator for AI coding agents, exposed as a local MCP server (stdio). It scores the changes in a Git working tree against a baseline commit (C# via Roslyn, TypeScript via a bundled Node worker). No LLM is involved. The full contract is in [`docs/specification.md`](docs/specification.md).
+A deterministic code-quality evaluator for AI coding agents, exposed as a local MCP server (stdio). It scores the changes in a Git working tree against a baseline commit. C# is analyzed with Roslyn and TypeScript with a bundled Node worker. Kotlin, for Android, Kotlin Multiplatform and JVM backend Gradle builds, is analyzed with a bundled JVM worker on top of your installed detekt-cli. No LLM is involved. The full contract is in [`docs/specification.md`](docs/specification.md).
 
 Tools: `evaluate_quality` (contract version `"1"`, pass threshold 90) and `get_rule_details` (details are held in memory only, so they expire when the server restarts).
 
 ## Quickstart
 
-1. **Install the tool** (needs the .NET 10 SDK, Git, and Node.js 22.13+ in the 22.x line or 24+ for TypeScript). `CodeShield.Tool` is **not yet published** to NuGet, so install it from a local pack for now:
+1. **Install the tool.** It needs the .NET 10 SDK and Git. TypeScript also needs Node.js 22.13+ (22.x line) or 24+. Kotlin also needs Java 17+ and detekt-cli 1.23.x (see [Requirements](#requirements)). `CodeShield.Tool` is **not yet published** to NuGet, so install it from a local pack for now:
 
    ```powershell
    dotnet pack src/CodeShield.Mcp -c Release -o artifacts/feed
@@ -29,13 +29,37 @@ Tools: `evaluate_quality` (contract version `"1"`, pass threshold 90) and `get_r
 
 Update or remove with the client's own commands (`copilot plugin update|uninstall codeshield`, `claude plugin update|uninstall codeshield@codeshield`) and `dotnet tool update|uninstall --global CodeShield.Tool`.
 
-Run `codeshield doctor` first when something is off: it checks the packaged analyzers, the TypeScript worker and its locked dependencies, Git, and the Node.js version. A missing Node.js only affects TypeScript analysis. C# analysis never restores packages: run `dotnet restore` in the analysed repository first, otherwise affected checks are `incomplete`.
+Run `codeshield doctor` first when something is off. It checks:
+
+- the packaged analyzers;
+- the TypeScript worker and its locked dependencies;
+- Git and the Node.js version;
+- Java, detekt-cli and the Kotlin worker.
+
+A missing runtime only affects its own language: without Node.js only TypeScript is `incomplete`, and without Java or detekt-cli only Kotlin is. C# analysis never restores packages: run `dotnet restore` in the analysed repository first, otherwise affected checks are `incomplete`.
 
 ## Requirements
 
-To run the host: .NET runtime 10, Git on `PATH`, and Node.js 22.13+ (22.x line) or 24+ for TypeScript analysis (the ESLint engine ranges exclude 22.0-22.12 and 23). To build from source: .NET SDK 10.0.100 or newer in the 10.0 feature bands (`global.json` uses `rollForward: latestFeature`) and npm.
+To run the host:
+
+- .NET runtime 10 and Git on `PATH`.
+- For TypeScript analysis: Node.js 22.13+ (22.x line) or 24+. The ESLint engine ranges exclude 22.0-22.12 and 23.
+- For Kotlin analysis: Java 17+ and detekt-cli 1.23.x.
+
+To build from source: .NET SDK 10.0.100 or newer in the 10.0 feature bands (`global.json` uses `rollForward: latestFeature`), npm, and a JDK 17+ for the Kotlin worker jar.
 
 For full C# evaluation of a repository you also need what that repository's projects need to load: a .NET SDK able to evaluate them, their reference/targeting packs (for example `FrameworkReference` packs and `netstandard` references) and restored NuGet packages. Evaluation never restores or builds; missing pieces make the affected checks `incomplete` with `MISSING_DEPENDENCY` or `PROJECT_LOAD_FAILED`.
+
+### Kotlin prerequisites
+
+CodeShield does not bundle detekt or the Kotlin compiler. The Kotlin worker runs on your Java and loads the Kotlin parser and correctness rules from your detekt-cli. Responses that analyzed Kotlin report the exact detekt, Kotlin and Java versions in `analyzerVersions`.
+
+- **Java 17+** (JDK or JRE) is found through `CODESHIELD_JAVA` (the `java` executable), then `JAVA_HOME`, then `java` on `PATH`.
+- **detekt-cli 1.23.x.** Every 1.23 release is accepted; CI tests 1.23.0 and 1.23.8. Other lines such as 1.22 and 2.x are rejected.
+  - Install it with `brew install detekt` or `scoop install detekt`, or unpack `detekt-cli-1.23.x.zip` from the [detekt releases](https://github.com/detekt/detekt/releases).
+  - CodeShield finds it through `CODESHIELD_DETEKT` (a `detekt-cli-1.23.x-all.jar` or an installation directory), then a `detekt-cli` or `detekt` launcher on `PATH`.
+- **Analysis is static.** Gradle builds are read, never run: no Gradle, daemon, plugin or build logic executes, and nothing is downloaded. Your `detekt.yml` and Gradle `detekt { }` settings do not affect the score.
+- **Worker location.** `CODESHIELD_KOTLIN_WORKER` overrides the location of the bundled worker jar.
 
 ## Build from source
 
@@ -43,7 +67,15 @@ For full C# evaluation of a repository you also need what that repository's proj
 scripts\setup.ps1        # or: sh scripts/setup.sh
 ```
 
-Both the portable folder and the .NET tool are produced by the same payload target in `src/CodeShield.Mcp`, which runs `npm ci` and `npm run build` in `worker/`, installs production `node_modules` from the lockfile, and stages `schemas/`, `agent-instructions/` and `release-manifest.json`. `setup` publishes to `artifacts/codeshield`; `dotnet pack` produces the tool package. The host finds `worker/dist/main.js` next to itself; override with `CODESHIELD_TS_WORKER` and `CODESHIELD_NODE`. `scripts/verify-install.ps1` packs, installs the tool into a temporary directory and runs the installed-tool tests from an unrelated working directory.
+Both the portable folder and the .NET tool are produced by the same payload target in `src/CodeShield.Mcp`. It:
+
+- runs `npm ci` and `npm run build` in `worker/`, and installs production `node_modules` from the lockfile;
+- builds `kotlin-worker/dist/codeshield-kotlin-worker.jar` with the pinned Gradle wrapper. The jar contains only CodeShield code, and the wrapper downloads Gradle on first use;
+- stages `schemas/`, `agent-instructions/` and `release-manifest.json`.
+
+`setup` publishes to `artifacts/codeshield`; `dotnet pack` produces the tool package. The host finds `worker/dist/main.js` and the Kotlin worker jar next to itself. Override them with `CODESHIELD_TS_WORKER` and `CODESHIELD_NODE`, and with `CODESHIELD_KOTLIN_WORKER`, `CODESHIELD_JAVA` and `CODESHIELD_DETEKT`.
+
+`scripts/verify-install.ps1` packs, installs the tool into a temporary directory and runs the installed-tool tests from an unrelated working directory. The Kotlin installed-tool test needs Java and detekt-cli.
 
 ## Contract artifacts
 
@@ -108,15 +140,18 @@ Cascading `.codeshield.json` files tune limits or exclude code from charging. Th
 
 ```powershell
 dotnet build CodeShield.slnx
+$env:CODESHIELD_DETEKT = scripts\fetch-detekt.ps1   # detekt-cli for the Kotlin tests (pinned SHA-256, downloaded outside the repository)
 dotnet test CodeShield.slnx          # unit + real-MCP integration tests (temporary Git fixture repos)
 cd worker; npm test
+cd ..\kotlin-worker; .\gradlew.bat build                         # worker tests on detekt 1.23.8
+.\gradlew.bat test '-PdetektVersion=1.23.0'                       # oldest supported detekt
 ```
 
-Unit tests fake Git. Integration tests create isolated temporary Git repositories and drive the real server over stdio, including both scenarios in `docs/acceptance-vectors.json`.
+Unit tests fake Git. Integration tests create isolated temporary Git repositories and drive the real server over stdio, including all three scenarios in `docs/acceptance-vectors.json`. The Kotlin integration tests need Java 17+ and detekt-cli; without them they fail with setup instructions. The Kotlin worker protocol is described in [`docs/kotlin-worker-protocol.md`](docs/kotlin-worker-protocol.md).
 
 ## Releases, CI and license
 
-- **CI** (`.github/workflows/package.yml`) runs on pushes to `main`, pull requests and manual dispatch. On Windows, macOS and Linux (x64 and ARM64) it builds, runs the unit, worker and integration suites, then packs the tool, installs it into a temporary tool path and runs the installed-tool tests from an unrelated directory.
+- **CI** (`.github/workflows/package.yml`) runs on pushes to `main`, pull requests and manual dispatch. On Windows, macOS and Linux (x64 and ARM64) it builds, runs the unit, worker and integration suites (Kotlin against detekt-cli 1.23.8 on Java 17), then packs the tool, installs it into a temporary tool path and runs the installed-tool tests from an unrelated directory. A separate job runs the Kotlin worker and integration tests against detekt-cli 1.23.0, the oldest supported release.
 - **Releasing** is incremental and tag-driven: update `CHANGELOG.md` (move items from *Unreleased* into a dated `## [X.Y.Z]` section), set the same version in `src/CodeShield.Mcp/CodeShield.Mcp.csproj` and both `integrations/codeshield` plugin manifests, then push the tag `vX.Y.Z`. `scripts/check-release.ps1` enforces that all of these agree; the release workflow then re-runs the full matrix and attaches the package, `SHA256SUMS.txt` and the changelog notes to a GitHub Release. The product version is independent of the ruleset version (`default@1.0.0`) and the contract version (`"1"`).
 - **NuGet** publishing is intentionally not configured; `CodeShield.Tool` stays unpublished until its identity and credentials are explicitly set up.
 - **License**: MIT, see [`LICENSE`](LICENSE). Redistributed third-party components and their notices are listed in [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md) and shipped inside the tool package under `licenses/`.
@@ -125,9 +160,24 @@ Unit tests fake Git. Integration tests create isolated temporary Git repositorie
 
 - Calibration is unreviewed: deterministic conformance fixtures verify the contract, they are not empirical calibration of the thresholds.
 - Method-metric findings are labelled `pre_existing`, `introduced` or `ambiguous` by matching units in the rename-mapped baseline file (Git's own rename detection; no custom rename heuristics). A unique match is `pre_existing`/`introduced` by metric comparison; an unmatched or duplicated identity is `ambiguous` and charged. Changed units are always charged.
-- Graph facts are kept per context: one per target framework for C# (`<project>|<tfm>`) and one per owning tsconfig for TypeScript. Cycle and boundary findings are charged once per affected context; disjoint contexts contribute only supporting edges. For main-sequence distance, afferent coupling counts distinct dependents across all contexts and efferent coupling counts the context's own dependencies.
+- Graph facts are kept per context: one per target framework for C# (`<project>|<tfm>`), one per owning tsconfig for TypeScript and a single `main` graph for Kotlin, built from main source-set project dependencies (findings name a Kotlin source context as `<build-script>|main` or `|test`). Cycle and boundary findings are charged once per affected context; disjoint contexts contribute only supporting edges. For main-sequence distance, afferent coupling counts distinct dependents across all contexts and efferent coupling counts the context's own dependencies.
 - External inputs are re-discovered after analysis (a second analysis pass), so an input that newly becomes resolvable yields `STALE_SNAPSHOT` with null score/pass and retained evidence. The cost is a second analysis pass per evaluation.
 - Duplication detection has no bucket cap (verified with 70 identical files).
 - The baseline is exported blob-by-blob from the commit (`export-ignore`/`export-subst` have no effect) and sealed read-only; evaluation never restores or builds. Projects must be restored beforehand, otherwise the result is `incomplete` with `MISSING_DEPENDENCY`. Real restored NuGet, `FrameworkReference` and `netstandard2.1` baselines are covered by integration tests (these tests need NuGet access or a warm cache for setup only). Only the net10.0 targeting pack and `netstandard2.1` reference pack were available on the development machine, so other frameworks were not exercised.
 - JavaScript files are not scored. `.tsx/.mts/.cts` sources and `allowJs` configurations are covered by integration tests.
+- Kotlin limitations:
+  - **Gradle reading.**
+    - Gradle builds are read statically. Project paths, source directories and project dependencies must be literal or use the supported forms (`project(":x")`, `projects.x`, `file(...)`, `"$rootDir/..."`).
+    - Values built by helper functions, plugins or convention plugins are reported as unresolved, as are dependencies declared in `subprojects`/`allprojects` blocks.
+    - Composite builds are not linked to each other.
+    - Groovy dollar-slashy strings are not supported.
+  - **Source sets.**
+    - Android build variants and Kotlin Multiplatform source sets are merged into one `main` and one `test` context per Gradle project.
+    - Test-only project dependencies are not module edges.
+    - `.kts` scripts and `.java` files are not scored.
+  - **Syntax only.** Kotlin analysis has no type resolution.
+    - LCOM4 resolves member names syntactically within a class.
+    - Correctness rules are limited to detekt rules that work on syntax alone.
+    - A file that does not parse makes its context `incomplete`.
+  - **Suppression.** A `@Suppress` of a selected detekt rule anywhere in a file marks that rule `SUPPRESSED_RULE` for the whole context.
 - Dogfood result (this repository, measured against a fixed baseline): with default rules the status is `complete` with score 88/100 and one `coupling.main-sequence-distance` finding on the stable `Abstractions` contract module, so the 90 gate is **not met**. With the maintainer-approved `src/CodeShield.Abstractions/.codeshield.json` (disables that rule, with a stated reason) the policy-based score is 100/100. The exemption is disclosed in the response's `configuration` block; the default-rules score is the unadjusted figure.
