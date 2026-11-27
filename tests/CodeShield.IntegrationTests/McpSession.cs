@@ -6,34 +6,38 @@ namespace CodeShield.IntegrationTests;
 /// <summary>A real CodeShield MCP server process driven over stdio.</summary>
 public sealed class McpSession : IAsyncDisposable
 {
+    /// <summary>
+    /// The SDK's 60-second initialize deadline is sized for interactive clients. Each test starts its own server while other
+    /// tests saturate the runner with Roslyn, Node and JVM workers, and a shared CI runner has exceeded it on a server that
+    /// normally answers in a few seconds; a hung server still fails the test.
+    /// </summary>
+    private static readonly TimeSpan InitializeDeadline = TimeSpan.FromMinutes(3);
+
     private readonly McpClient client;
 
     private McpSession(McpClient client) => this.client = client;
 
-    public static async Task<McpSession> StartAsync(IReadOnlyDictionary<string, string>? environment = null)
-    {
-        var transport = new StdioClientTransport(new StdioClientTransportOptions
+    public static Task<McpSession> StartAsync(IReadOnlyDictionary<string, string>? environment = null) =>
+        ConnectAsync(new StdioClientTransport(new StdioClientTransportOptions
         {
             Name = "codeshield",
             Command = "dotnet",
             Arguments = [ServerLocator.ServerDll()],
             EnvironmentVariables = environment?.ToDictionary(pair => pair.Key, pair => (string?)pair.Value),
-        });
-        return new McpSession(await McpClient.CreateAsync(transport));
-    }
+        }));
 
     /// <summary>Starts an installed executable (for example the global tool) from an unrelated working directory.</summary>
-    public static async Task<McpSession> StartInstalledAsync(string executable, string workingDirectory, params string[] arguments)
-    {
-        var transport = new StdioClientTransport(new StdioClientTransportOptions
+    public static Task<McpSession> StartInstalledAsync(string executable, string workingDirectory, params string[] arguments) =>
+        ConnectAsync(new StdioClientTransport(new StdioClientTransportOptions
         {
             Name = "codeshield",
             Command = executable,
             Arguments = arguments,
             WorkingDirectory = workingDirectory,
-        });
-        return new McpSession(await McpClient.CreateAsync(transport));
-    }
+        }));
+
+    private static async Task<McpSession> ConnectAsync(StdioClientTransport transport) =>
+        new(await McpClient.CreateAsync(transport, new McpClientOptions { InitializationTimeout = InitializeDeadline }));
 
     public Task<JsonElement> EvaluateAsync(string workspace, string baseline, string contractVersion = "1") =>
         CallAsync("evaluate_quality", new() { ["contractVersion"] = contractVersion, ["workspace"] = workspace, ["baseline"] = baseline });
